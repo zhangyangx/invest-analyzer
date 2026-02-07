@@ -1,41 +1,41 @@
 ---
 name: invest-analyzer
 version: 1.0.0
-description: Investment analysis skill spec for quotes, technical indicators, and news.
+description: 投资分析工具 - 行情、技术指标与新闻资讯
 ---
 
-# Skill Spec: Stock Analysis
+# 股票分析 Skill
 
-## 1. Skill Structure
-1. Entry: users chat with the AI in the command line.
-1. Input constraint: users can provide a stock code or stock name; stock names should be resolved via keyword search.
-1. Data access: the AI calls scripts in this directory to fetch structured data.
-1. Output: the AI generates structured Markdown results.
-1. Scope constraints: no sector analysis; users never call scripts directly, only the AI does.
+## 一、工作流程
 
-## 2. Script Inventory
+1. 用户输入股票代码或股票名称
+2. AI 调用 scripts 目录下的脚本获取数据
+3. AI 输出结构化的 Markdown 分析报告
 
-### 2.1 Stock search (`scripts/stock_search.py`)
-- **Purpose**: search stock code by keyword (stock name or partial code).
+## 二、脚本列表
 
-**Usage:**
+### 2.1 股票搜索 (`scripts/stock_search.py`)
+
+根据关键词搜索股票代码。
+
+**用法：**
 ```bash
-python3 stock_search.py <keyword> [--source auto|sina|tencent] [--limit N]
+python3 stock_search.py <关键词> [--source auto|sina|tencent] [--limit N]
 ```
 
-**Parameters:**
-- `keyword` (required): Stock name or keyword
-- `--source` (optional): `auto` (default), `sina`, or `tencent`
-- `--limit` (optional): Max results, default `10`, max `50`
+**参数：**
+- `keyword`（必填）：股票名称或代码
+- `--source`（可选）：`auto`（默认）、`sina`、`tencent`
+- `--limit`（可选）：最大结果数，默认 10，最多 50
 
-**Examples:**
+**示例：**
 ```bash
 python3 stock_search.py 贵州茅台
 python3 stock_search.py 茅台 --source sina
 python3 stock_search.py 6005 --limit 5
 ```
 
-**Output (JSON):**
+**输出（JSON）：**
 ```json
 {
   "keyword": "贵州茅台",
@@ -53,27 +53,29 @@ python3 stock_search.py 6005 --limit 5
 }
 ```
 
-### 2.2 Real-time quote (`scripts/stock_quote.py`)
-- **Purpose**: fetch current price, change, volume, and level-1 quotes.
+---
 
-**Usage:**
+### 2.2 实时行情 (`scripts/stock_quote.py`)
+
+获取当前价格、涨跌幅、成交量等实时数据。
+
+**用法：**
 ```bash
-python3 stock_quote.py <stock_code>
+python3 stock_quote.py <股票代码>
 ```
 
-**Parameters:**
-- `stock_code` (required): Stock code in 6-digit format
-  - Supports: `600519`, `sh600519`, `sz000001`
-  - Auto-detects market prefix (sh for 60/68, sz for others)
+**参数：**
+- `stock_code`（必填）：6 位股票代码
+  - 支持格式：`600519`、`sh600519`、`sz000001`
+  - 自动识别市场前缀（60/68 开头为 sh，其他为 sz）
 
-**Examples:**
+**示例：**
 ```bash
 python3 stock_quote.py 600519
 python3 stock_quote.py sh600519
-python3 stock_quote.py sz000001
 ```
 
-**Output (JSON):**
+**输出（JSON）：**
 ```json
 {
   "name": "贵州茅台",
@@ -86,42 +88,35 @@ python3 stock_quote.py sz000001
   "low": 1670.00,
   "volume": 2500000,
   "change": 10.00,
-  "pct_change": 0.60,
-  "buy1_p": 1679.50,
-  "buy1_v": 100,
-  "sell1_p": 1680.50,
-  "sell1_v": 200,
-  ...
+  "pct_change": 0.60
 }
 ```
 
-### 2.3 K-line data (`scripts/stock_kline.py`)
-- **Purpose**: fetch K-line data for indicator calculation.
+---
 
-**Usage:**
+### 2.3 K线数据 (`scripts/stock_kline.py`)
+
+获取 K 线数据用于计算技术指标。
+
+**用法：**
 ```bash
-python3 stock_kline.py <stock_code> [scale] [count]
+python3 stock_kline.py <股票代码> [周期] [数量]
 ```
 
-**Parameters:**
-- `stock_code` (required): Stock code (same format as stock_quote.py)
-- `scale` (optional): K-line time period (default: `240`)
-  - Common values: `5`=5min, `15`=15min, `30`=30min, `60`=1hour, `240`=daily
-- `count` (optional): Number of data points to fetch (default: `120`)
+**参数：**
+- `stock_code`（必填）：股票代码
+- `scale`（可选）：K 线周期，默认 `240`
+  - 常用值：`5`=5分、`15`=15分、`60`=1小时、`240`=日线
+- `count`（可选）：数据条数，默认 `120`
 
-**Examples:**
+**示例：**
 ```bash
-# Daily K-line, 120 periods (default)
 python3 stock_kline.py 600519
-
-# 5-minute K-line, 200 periods
 python3 stock_kline.py 600519 5 200
-
-# 1-hour K-line, 150 periods
 python3 stock_kline.py 600519 60 150
 ```
 
-**Output (JSON):**
+**输出（JSON）：**
 ```json
 {
   "symbol": "sh600519",
@@ -134,52 +129,30 @@ python3 stock_kline.py 600519 60 150
       "low": "1665.00",
       "close": "1680.00",
       "volume": "2500000"
-    },
-    ...
+    }
   ]
 }
 ```
 
-### 2.4 Technical indicators (`scripts/stock_indicators.py`)
-- **Purpose**: compute MA/MACD/KDJ/RSI/BOLL from K-line data.
+---
 
-**Usage:**
+### 2.4 技术指标 (`scripts/stock_indicators.py`)
+
+根据 K 线数据计算 MA/MACD/KDJ/RSI/BOLL 指标。
+
+**用法：**
 ```bash
-# Method 1: Pipe JSON from stdin
+# 方法 1：从标准输入读取 K 线数据
 python3 stock_kline.py 600519 | python3 stock_indicators.py
 
-# Method 2: Read from file
+# 方法 2：从文件读取
 python3 stock_indicators.py --file kline_data.json
 ```
 
-**Parameters:**
-- `--file <path>` (optional): Read K-line JSON from file instead of stdin
-- **Input format** (stdin or file):
-```json
-{
-  "klines": [
-    {
-      "open": "1670.00",
-      "high": "1690.00",
-      "low": "1665.00",
-      "close": "1680.00"
-    },
-    ...
-  ]
-}
-```
+**参数：**
+- `--file <path>`（可选）：从文件读取 K 线 JSON
 
-**Examples:**
-```bash
-# Direct pipe from K-line script
-python3 stock_kline.py 600519 | python3 stock_indicators.py
-
-# From saved file
-python3 stock_kline.py 600519 > /tmp/kline.json
-python3 stock_indicators.py --file /tmp/kline.json
-```
-
-**Output (JSON):**
+**输出（JSON）：**
 ```json
 {
   "MA": {
@@ -212,104 +185,71 @@ python3 stock_indicators.py --file /tmp/kline.json
 }
 ```
 
-### 2.5 Keyword expander (`scripts/keyword_expander.py`)
-- **Purpose**: generate news search keywords from stock code + optional topic.
+---
 
-**Usage:**
+### 2.5 关键词扩展 (`scripts/keyword_expander.py`)
+
+根据股票名称和主题生成新闻搜索关键词。
+
+**用法：**
 ```bash
-python3 keyword_expander.py --code <stock_code> [--topic <text>] [--topic-en <text>] [--extra "a,b,c"]
+python3 keyword_expander.py --name <股票名称> [--topic <文本>] [--topic-en <文本>]
 ```
 
-**Parameters:**
-- `--code` (required): Stock code (6-digit format, auto-normalizes)
-- `--topic` (optional): Chinese or mixed topic text
-- `--topic-en` (optional): English topic text (AI-provided translation)
-- `--extra` (optional): Comma-separated extra keywords
+**参数：**
+- `--name`（必填）：股票名称
+- `--topic`（可选）：中文主题
+- `--topic-en`（可选）：英文主题（AI 翻译提供）
+- `--extra`（可选）：额外关键词，逗号分隔
 
-**Examples:**
+**示例：**
 ```bash
-# Basic keywords only (stock code + generic terms)
-python3 keyword_expander.py --code 600519
-
-# With Chinese topic
-python3 keyword_expander.py --code 600519 --topic "财报,业绩"
-
-# With English topic (AI translation)
-python3 keyword_expander.py --code 600519 --topic-en "earnings,revenue"
-
-# Combined with extra keywords
-python3 keyword_expander.py --code 600519 --topic "并购" --extra "重组,资产"
+python3 keyword_expander.py --name 贵州茅台
+python3 keyword_expander.py --name "贵州茅台" --topic "财报,业绩"
+python3 keyword_expander.py --name "贵州茅台" --topic-en "earnings"
 ```
 
-**Output (JSON):**
+**输出（JSON）：**
 ```json
 {
   "keywords": [
-    "600519",
-    "600519 股票",
-    "600519 公司",
+    "贵州茅台",
+    "贵州茅台 股票",
+    "贵州茅台 公司",
     "财报",
-    "600519 财报",
-    "600519 相关 财报",
-    "业绩",
-    "600519 业绩",
-    "600519 相关 业绩"
+    "贵州茅台 财报"
   ]
 }
 ```
 
-### 2.6 News fetcher (`scripts/news_fetcher.py`)
-- **Purpose**: fetch news items within the last 24 hours by keyword or hotspot feeds.
+---
 
-**Usage:**
+### 2.6 新闻获取 (`scripts/news_fetcher.py`)
+
+获取最近 24 小时内的相关新闻。
+
+**用法：**
 ```bash
-# Keyword search mode
-python3 news_fetcher.py --mode keyword --keyword "<single_keyword>" --hours 24 --limit 30
+# 关键词搜索模式
+python3 news_fetcher.py --mode keyword --keyword "<关键词>" --hours 24 --limit 30
 
-# Multiple keywords
-python3 news_fetcher.py --mode keyword --keywords "AAPL,Apple,iPhone" --hours 24 --limit 30
+# 多关键词搜索
+python3 news_fetcher.py --mode keyword --keywords "AAPL,Apple,iPhone" --hours 24
 
-# Hotspot feeds mode
-python3 news_fetcher.py --mode hot --hours 24 --limit 30
+# 热点源模式
+python3 news_fetcher.py --mode hot --hours 24
 ```
 
-**Parameters:**
-- `--mode` (optional): Search mode, either `keyword` or `hot` (default: `keyword`)
-- `--keyword` (optional): Single keyword for search
-- `--keywords` (optional): Comma-separated keywords for search
-- `--hours` (optional): Time window in hours (default: `24`)
-- `--limit` (optional): Max news items per keyword/feed (default: `30`)
+**参数：**
+- `--mode`（可选）：`keyword` 或 `hot`（热点源），默认 `keyword`
+- `--keyword`（可选）：单个关键词
+- `--keywords`（可选）：逗号分隔的多个关键词
+- `--hours`（可选）：时间窗口（小时），默认 24
+- `--limit`（可选）：最大新闻数，默认 30
 
-**Note**: In `keyword` mode, either `--keyword` or `--keywords` must be provided.
+**热点源包括：** Hacker News、Reddit 财经板块、BBC Business、CNBC、百度财经等
 
-**Examples:**
-```bash
-# Single keyword search (last 24 hours)
-python3 news_fetcher.py --mode keyword --keyword "600519"
-
-# Multiple keywords (comma-separated)
-python3 news_fetcher.py --mode keyword --keywords "600519,贵州茅台,财报"
-
-# Extended time window (7 days)
-python3 news_fetcher.py --mode keyword --keywords "AAPL" --hours 168
-
-# Hotspot feeds from predefined sources
-python3 news_fetcher.py --mode hot --hours 12
-
-# Custom limit
-python3 news_fetcher.py --mode keyword --keywords "600519" --limit 50
-```
-
-**Hotspot feeds (when `--mode hot`):**
-- Hacker News
-- Reddit r/finance
-- Reddit r/investing
-- BBC Business
-- CNBC
-- Baidu Finance
-- Baidu Stock
-
-**Output (JSON):**
+**输出（JSON）：**
 ```json
 {
   "items": [
@@ -318,141 +258,107 @@ python3 news_fetcher.py --mode keyword --keywords "600519" --limit 50
       "link": "https://example.com/article1",
       "source": "Google News",
       "time": "Tue, 05 Feb 2026 10:30:00 GMT"
-    },
-    {
-      "title": "Corporate Earnings Report Released",
-      "link": "https://example.com/article2",
-      "source": "Baidu Finance",
-      "time": "2026-02-05T08:15:00Z"
     }
   ],
-  "count": 2
+  "count": 1
 }
 ```
 
-## 3. AI Usage Guide
+## 三、AI 使用指南
 
-### 3.1 Input Validation
-- If input is a 6-digit stock code, proceed directly.
-- If input is a stock name or keyword, call `stock_search.py` to resolve candidate codes.
-- If multiple candidates are returned, ask the user to confirm the intended stock code.
+### 3.1 输入验证
+- 6 位数字股票代码 → 直接处理
+- 股票名称或关键词 → 调用 `stock_search.py` 解析
+- 多个搜索结果 → 询问用户确认
 
-### 3.2 Core Analysis Flow
-1. Call `stock_quote.py` to get current price and basic data.
-2. Call `stock_kline.py` to fetch K-line data.
-3. Call `stock_indicators.py` to compute technical indicators.
+### 3.2 核心分析流程
+1. 调用 `stock_quote.py` 获取实时行情
+2. 调用 `stock_kline.py` 获取 K 线数据
+3. 调用 `stock_indicators.py` 计算技术指标
 
-### 3.3 News Search Trigger Conditions
-Only trigger news search when the user explicitly or implicitly requests it:
+### 3.3 新闻搜索触发条件
 
-**Explicit triggers**:
-- "news", "消息", "资讯", "新闻"
-- "events", "事件"
-- "headlines", "头条"
-- "situation", "情况"
-- "combine news", "结合新闻"
+仅在用户明确或隐式要求时触发新闻搜索：
 
-**Implicit triggers**:
-- "recent international situation", "recent macro environment"
-- Any request implying context or background information
+**明确触发词：**
+- 新闻、消息、资讯、事件、头条、情况
 
-### 3.4 Keyword Generation Rules
-- **With topic**: Generate keywords from `[stock_code] + [topic]`. Translate topic to English for English-centric sources via `--topic-en`.
-- **Without topic** (generic news): Use `[stock_code] + generic finance terms`:
-  - Examples: `"股票代码,财报,业绩,公告"` or `"股票代码,financial,earnings,announcement"`
-  - Maximum 4-5 keywords per request.
+**隐式触发：**
+- 询问最近国际形势、宏观环境、背景信息等
 
-### 3.5 News Script Invocation
-- Use `--keywords` with a comma-separated list: `--keywords "AAPL,Apple,iPhone"`
-- Do NOT concatenate keywords into a single phrase.
+### 3.4 关键词生成规则
+- 使用 `keyword_expander.py --name <股票名称>` 生成搜索关键词
+- **有主题**：添加 `--topic <主题>` 或 `--topic-en <英文主题>`
+- **无主题**：脚本自动生成股票名称+通用财经词汇的组合
+- 每次请求最多 4-5 个关键词
 
-### 3.6 News Output Format
-- Translate original English titles into Chinese.
-- Provide a one-line Chinese summary for each news item.
-- Include impact assessment (positive/negative/neutral).
+### 3.5 新闻输出要求
+- 英文标题翻译成中文
+- 每条新闻提供一行中文摘要
+- 标注影响判断（正面/负面/中性）
 
-### 3.7 Error Handling
-- **Invalid stock code**: Inform the user and ask for a valid code.
-- **Network/API failure**: Retry once, then inform the user of the issue and proceed with available data.
-- **No news found**: State "No relevant news found in the past 24 hours" and continue with other sections.
+### 3.6 错误处理
+- **无效股票代码**：提示用户并要求重新输入
+- **网络/API 失败**：重试一次，失败后告知用户并继续使用已有数据
+- **无新闻**：显示"过去 24 小时无相关新闻"并继续其他部分
 
-### 3.8 Output Structure
-Output Markdown including:
-- Stock basics (quote data)
-- Technical indicator analysis
-- News list and impact (if triggered)
+## 四、技术指标解读规则
 
-## 4. Technical Indicator Interpretation Rules
+### 4.1 趋势指标（MA）
+- **多头排列**：短期 MA > 长期 MA（MA5 > MA20 > MA60），看涨
+- **空头排列**：短期 MA < 长期 MA，看跌
+- **金叉**：MA5 上穿 MA20，买入信号
+- **死叉**：MA5 下穿 MA20，卖出信号
 
-### 4.1 Trend Indicators (MA)
-- **Bullish**: Short-term MA > Long-term MA (e.g., MA5 > MA20 > MA60)
-- **Bearish**: Short-term MA < Long-term MA
-- **Crossover**: Golden cross (MA5 crosses above MA20) = buy signal; Death cross = sell signal
+### 4.2 动能指标（MACD、KDJ、RSI）
+- **MACD**：
+  - DIF > DEA：看涨
+  - DIF < DEA：看跌
+  - MACD > 0：上涨动能
+  - MACD < 0：下跌动能
+- **KDJ**：
+  - K > D > J：超买区，可能回调
+  - K < D < J：超卖区，可能反弹
+  - J > 100 或 J < 0：极端超买/超卖
+- **RSI**：
+  - RSI > 70：超买
+  - RSI < 30：超卖
+  - RSI 50 为平衡点
 
-### 4.2 Momentum Indicators (MACD, KDJ, RSI)
-- **MACD**:
-  - DIF > DEA: bullish
-  - DIF < DEA: bearish
-  - MACD > 0: upward momentum
-  - MACD < 0: downward momentum
-- **KDJ**:
-  - K > D > J: overbought zone, potential pullback
-  - K < D < J: oversold zone, potential rebound
-  - J > 100 or J < 0: extreme overbought/oversold
-- **RSI**:
-  - RSI > 70: overbought
-  - RSI < 30: oversold
-  - RSI 50 as equilibrium
+### 4.3 波动指标（BOLL）
+- **价格位置**：
+  - 上轨上方：强势上涨，注意回调
+  - 轨道内：正常震荡
+  - 下轨下方：强势下跌，关注反弹
+- **带宽**：收窄=盘整；扩张=趋势形成
 
-### 4.3 Volatility Indicators (BOLL)
-- **Price position**:
-  - Above upper band: strong uptrend, watch for pullback
-  - Within bands: normal trading range
-  - Below lower band: strong downtrend, watch for rebound
-- **Band width**: Narrowing = consolidation; Widening = trend forming
+## 五、评级与风险评估
 
-## 5. Rating & Risk Assessment Rules
+### 5.1 评级标准
 
-### 5.1 Rating System
-Based on technical indicator consensus and news sentiment:
+基于技术指标共识和新闻情绪：
 
-| Rating | Condition |
-|--------|-----------|
-| **买入 (Buy)** | - MA呈多头排列 (MA5 > MA20 > MA60) AND (MACD金叉 OR RSI < 30回升 OR 突破BOLL上轨) AND 无重大利空新闻 |
-| **增持 (Accumulate)** | - 至少2个趋势/动能指标看涨 AND 无明确利空 OR 技术面偏强但存在不确定性 |
-| **持有 (Hold)** | - 指标多空交织，方向不明 OR 震荡整理中 OR 等待突破信号 |
-| **减持 (Reduce)** | - 至少2个趋势/动能指标看弱 OR 跌破关键支撑位 OR 存在潜在风险 |
-| **卖出 (Sell)** | - MA呈空头排列 (MA5 < MA20 < MA60) AND (MACD死叉 OR RSI > 70回落 OR 跌破BOLL下轨) OR 重大利空新闻 |
+| 评级 | 条件 |
+|------|------|
+| **买入** | MA 多头排列 AND（MACD 金叉 OR RSI 超卖回升 OR 突破 BOLL 上轨）AND 无重大利空 |
+| **增持** | 至少 2 个趋势/动能指标看涨 AND 无明确利空 |
+| **持有** | 指标多空交织，方向不明或震荡整理 |
+| **减持** | 至少 2 个趋势/动能指标看弱 OR 跌破关键支撑 |
+| **卖出** | MA 空头排列 AND（MACD 死叉 OR RSI 超买回落 OR 跌破 BOLL 下轨）OR 重大利空 |
 
-**特殊情况**：
-- 如果没有新闻数据，仅依据技术指标评级
-- 如果有重大新闻事件，新闻权重 > 技术指标
+**注：** 重大新闻事件权重 > 技术指标
 
-### 5.2 Risk Note Generation
-Always include relevant risk warnings based on:
-- **Technical risks**: RSI超买/超卖、BOLL极端位置、量价背离
-- **News risks**: 政策变化、业绩预警、法律诉讼、监管风险
-- **Market risks**: 大盘走势、行业波动、汇率/利率影响
+### 5.2 风险提示
+根据以下因素生成相关风险提示：
+- **技术面风险**：RSI 超买/超卖、BOLL 极端位置、量价背离
+- **新闻面风险**：政策变化、业绩预警、法律诉讼、监管风险
+- **市场风险**：大盘走势、行业波动、汇率/利率影响
 
-**Template for risk note**:
-```
-• [技术面风险描述]
-• [新闻面风险描述，如无则省略]
-• 投资有风险，以上分析仅供参考，不构成投资建议
-```
+## 六、输出模板
 
-## 6. Related Docs
-- `SKILL_API.md`
+AI 必须严格按以下结构输出 Markdown 报告：
 
-## 7. Fixed Markdown Output Template (Research Style)
-The AI must follow this structure and headings exactly.
-
-### 7.1 Conditional Section Rules
-- **Section 4 (资讯与影响)**: Only include if news search was triggered. If triggered but no news found, display: `| - | - | - | 过去24小时无相关新闻 | - | - |`
-
-### 7.2 Output Template
-
-```
+```markdown
 # 股票分析报告｜{股票代码} {股票名称}
 
 ## 一、摘要
@@ -505,3 +411,5 @@ The AI must follow this structure and headings exactly.
 | 投资建议 | {investment_advice} |
 | 风险提示 | {risk_note} |
 ```
+
+**注：** 第四部分「资讯与影响」仅在触发新闻搜索时包含。如触发但无新闻，显示：`| - | - | - | 过去24小时无相关新闻 | - | - |`

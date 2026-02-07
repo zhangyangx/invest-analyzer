@@ -5,7 +5,7 @@ Keyword expander for news search.
 No manual mapping required.
 
 Input:
-  --code <stock_code>
+  --name <stock_name>
   [--topic <text>]          Chinese or mixed topic
   [--topic-en <text>]       English topic (AI-provided translation)
   [--extra "a,b,c"]         Extra keywords
@@ -17,35 +17,26 @@ import json
 import re
 
 
-def normalize_code(code: str) -> str:
-    code = (code or "").strip()
-    if re.fullmatch(r"\d{6}", code):
-        return code
-    code = code.lower().replace("sh", "").replace("sz", "")
-    if re.fullmatch(r"\d{6}", code):
-        return code
-    return ""
-
-
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--code", type=str, default="")
+    parser.add_argument("--name", type=str, default="")
     parser.add_argument("--topic", type=str, default="")
     parser.add_argument("--topic-en", type=str, default="")
     parser.add_argument("--extra", type=str, default="")
     args = parser.parse_args()
 
-    code = normalize_code(args.code)
-    if not code:
-        print(json.dumps({"error": "invalid_stock_code"}, ensure_ascii=False))
+    name = (args.name or "").strip()
+    if not name:
+        print(json.dumps({"error": "invalid_stock_name"}, ensure_ascii=False))
         return
 
     keywords = []
 
-    # Base keywords (no mapping, just code and generic finance context)
-    keywords.append(code)
-    keywords.append(f"{code} 股票")
-    keywords.append(f"{code} 公司")
+    base = name
+    # Base keywords (use stock name for news relevance)
+    keywords.append(base)
+    keywords.append(f"{name} 股票")
+    keywords.append(f"{name} 公司")
 
     def split_terms(text: str):
         if not text:
@@ -57,15 +48,15 @@ def main():
     topic = args.topic.strip()
     for t in split_terms(topic):
         keywords.append(t)
-        keywords.append(f"{code} {t}")
-        keywords.append(f"{code} 相关 {t}")
+        keywords.append(f"{base} {t}")
+        keywords.append(f"{base} 相关 {t}")
 
     # English topic terms (AI-provided translation)
     topic_en = args.topic_en.strip()
     for t in split_terms(topic_en):
         keywords.append(t)
-        keywords.append(f"{code} {t}")
-        keywords.append(f"{code} related {t}")
+        keywords.append(f"{base} {t}")
+        keywords.append(f"{base} related {t}")
 
     # Extra keywords (comma-separated)
     extra = split_terms(args.extra or "")
