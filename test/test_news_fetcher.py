@@ -9,6 +9,12 @@ import json
 import subprocess
 import sys
 import unittest
+from pathlib import Path
+
+TEST_DIR = Path(__file__).resolve().parent
+ROOT_DIR = TEST_DIR.parent
+sys.path.insert(0, str(ROOT_DIR))
+from scripts import news_fetcher as news_fetcher_module  # noqa: E402
 
 
 class TestNewsFetcher(unittest.TestCase):
@@ -44,6 +50,18 @@ class TestNewsFetcher(unittest.TestCase):
         code, stdout, stderr = self.run_script(
             "--mode", "keyword",
             "--keywords", "AAPL,Apple,iPhone"
+        )
+        self.assertEqual(code, 0, f"Script failed: {stderr}")
+        data = json.loads(stdout)
+        self.assertIn("items", data)
+        self.assertIn("count", data)
+        self.assertIsInstance(data["items"], list)
+
+    def test_keyword_mode_cn_en_keywords(self):
+        """Test keyword mode with multiple keywords (combined)."""
+        code, stdout, stderr = self.run_script(
+            "--mode", "keyword",
+            "--keywords", "特变电工,光伏,TBEA,photovoltaic"
         )
         self.assertEqual(code, 0, f"Script failed: {stderr}")
         data = json.loads(stdout)
@@ -300,6 +318,115 @@ class TestNewsFetcher(unittest.TestCase):
         data = json.loads(stdout)
         self.assertEqual(data["count"], len(data["items"]))
 
+
+class TestNewsFetcherParsing(unittest.TestCase):
+    """Unit tests for RSS parsing and link extraction."""
+
+    def test_parse_rss_item_link_text(self):
+        """RSS <link>text</link> should be extracted."""
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>Example Title</title>
+      <link>https://news.google.com/rss/articles/abc123</link>
+      <pubDate>Sat, 07 Feb 2026 14:30:40 GMT</pubDate>
+    </item>
+  </channel>
+</rss>
+"""
+        items = news_fetcher_module.parse_rss(
+            xml,
+            "Google News",
+            limit=10,
+            tz_local=news_fetcher_module.parse_tz_offset("+08:00"),
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["link"], "https://news.google.com/rss/articles/abc123")
+
+    def test_parse_rss_item_link_text_hnrss(self):
+        """HN RSS-style <link>text</link> should be extracted."""
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>HN Title</title>
+      <link>https://news.ycombinator.com/item?id=123</link>
+      <pubDate>Sat, 07 Feb 2026 14:30:40 GMT</pubDate>
+    </item>
+  </channel>
+</rss>
+"""
+        items = news_fetcher_module.parse_rss(
+            xml,
+            "Hacker News",
+            limit=10,
+            tz_local=news_fetcher_module.parse_tz_offset("+08:00"),
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["link"], "https://news.ycombinator.com/item?id=123")
+
+    def test_parse_rss_item_link_text_bbc(self):
+        """BBC RSS-style <link>text</link> should be extracted."""
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0">
+  <channel>
+    <item>
+      <title>BBC Title</title>
+      <link>https://www.bbc.co.uk/news/business-123</link>
+      <pubDate>Sat, 07 Feb 2026 14:30:40 GMT</pubDate>
+    </item>
+  </channel>
+</rss>
+"""
+        items = news_fetcher_module.parse_rss(
+            xml,
+            "BBC Business",
+            limit=10,
+            tz_local=news_fetcher_module.parse_tz_offset("+08:00"),
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["link"], "https://www.bbc.co.uk/news/business-123")
+
+    def test_parse_atom_entry_link_href(self):
+        """Atom <link href="..."/> should be extracted."""
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <title>Example Atom Title</title>
+    <link href="https://example.com/atom/entry"/>
+    <updated>2026-02-07T14:30:40Z</updated>
+  </entry>
+</feed>
+"""
+        items = news_fetcher_module.parse_rss(
+            xml,
+            "Atom Source",
+            limit=10,
+            tz_local=news_fetcher_module.parse_tz_offset("+08:00"),
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["link"], "https://example.com/atom/entry")
+
+    def test_parse_atom_entry_link_with_rel(self):
+        """Atom <link rel="alternate" href="..."/> should be extracted."""
+        xml = """<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <entry>
+    <title>Reddit Title</title>
+    <link rel="alternate" type="text/html" href="https://www.reddit.com/r/finance/comments/abc123/"/>
+    <updated>2026-02-07T14:30:40Z</updated>
+  </entry>
+</feed>
+"""
+        items = news_fetcher_module.parse_rss(
+            xml,
+            "Reddit Finance",
+            limit=10,
+            tz_local=news_fetcher_module.parse_tz_offset("+08:00"),
+        )
+        self.assertEqual(len(items), 1)
+        self.assertEqual(items[0]["link"], "https://www.reddit.com/r/finance/comments/abc123/")
 
 def run_tests():
     """Run all tests and print summary."""

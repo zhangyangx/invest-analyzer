@@ -106,7 +106,9 @@ def get_text(item, candidates):
 
 
 def get_link(item):
-    link_elem = item.find("link") or item.find("{http://www.w3.org/2005/Atom}link")
+    link_elem = item.find("link")
+    if link_elem is None:
+        link_elem = item.find("{http://www.w3.org/2005/Atom}link")
     if link_elem is None:
         return ""
     if link_elem.text:

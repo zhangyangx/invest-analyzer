@@ -33,10 +33,7 @@ def main():
     keywords = []
 
     base = name
-    # Base keywords (use stock name for news relevance)
     keywords.append(base)
-    keywords.append(f"{name} 股票")
-    keywords.append(f"{name} 公司")
 
     def split_terms(text: str):
         if not text:

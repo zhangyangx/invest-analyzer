@@ -34,8 +34,6 @@ class TestKeywordExpander(unittest.TestCase):
         data = json.loads(stdout)
         keywords = data["keywords"]
         self.assertIn("贵州茅台", keywords)
-        self.assertIn("贵州茅台 股票", keywords)
-        self.assertIn("贵州茅台 公司", keywords)
         self.assertNotIn("600519", keywords)
 
     def test_name_with_topic_chinese(self):
@@ -217,6 +215,31 @@ class TestKeywordExpander(unittest.TestCase):
         self.assertEqual(code, 0)
         data = json.loads(stdout)
         self.assertEqual(data.get("error"), "invalid_stock_name")
+
+    def test_name_en_for_english_source(self):
+        """Test with English name."""
+        code, stdout, stderr = self.run_script(
+            "--name", "TBEA",
+            "--topic-en", "photovoltaic"
+        )
+        self.assertEqual(code, 0, f"Script failed: {stderr}")
+        data = json.loads(stdout)
+        keywords = data["keywords"]
+        self.assertIn("TBEA", keywords)
+        self.assertIn("TBEA photovoltaic", keywords)
+        self.assertIn("TBEA related photovoltaic", keywords)
+
+    def test_topic_en_generates_keywords(self):
+        """Test English topic generates keywords."""
+        code, stdout, stderr = self.run_script(
+            "--name", "贵州茅台",
+            "--topic-en", "earnings"
+        )
+        self.assertEqual(code, 0, f"Script failed: {stderr}")
+        data = json.loads(stdout)
+        keywords = data["keywords"]
+        self.assertIn("earnings", keywords)
+        self.assertIn("贵州茅台 earnings", keywords)
 
 
 def run_tests():
