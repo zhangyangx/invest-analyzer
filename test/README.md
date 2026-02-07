@@ -6,6 +6,7 @@ This directory contains comprehensive test suites for all invest-analyzer script
 
 | Test File | Script Tested | Test Count | Coverage |
 |-----------|--------------|-----------|----------|
+| `test_stock_search.py` | `scripts/stock_search.py` | 5 tests | Keyword search, sources, error handling |
 | `test_stock_quote.py` | `scripts/stock_quote.py` | 12 tests | All parameters, error handling, data validation |
 | `test_stock_kline.py` | `scripts/stock_kline.py` | 17 tests | All scales, counts, stock codes |
 | `test_stock_indicators.py` | `scripts/stock_indicators.py` | 16 tests | All indicators, stdin/file input, edge cases |
@@ -25,6 +26,7 @@ python3 test/run_all_tests.py
 python3 test/test_stock_quote.py
 python3 test/test_stock_kline.py
 python3 test/test_stock_indicators.py
+python3 test/test_stock_search.py
 python3 test/test_keyword_expander.py
 python3 test/test_news_fetcher.py
 ```
@@ -34,6 +36,9 @@ python3 test/test_news_fetcher.py
 ```bash
 # Test stock quote script
 python3 test/test_stock_quote.py
+
+# Test stock search script
+python3 test/test_stock_search.py
 
 # Test K-line script
 python3 test/test_stock_kline.py
@@ -181,3 +186,8 @@ When adding new features or scripts:
 3. Include tests for all parameters and edge cases
 4. Add the new test to `run_all_tests.py`
 5. Update this README with coverage details
+### stock_search.py (5 tests)
+- ✓ Keyword search (default source)
+- ✓ Source selection (sina/tencent)
+- ✓ Result structure validation
+- ✓ Error handling (missing args, blank keyword)

@@ -8,14 +8,52 @@ description: Investment analysis skill spec for quotes, technical indicators, an
 
 ## 1. Skill Structure
 1. Entry: users chat with the AI in the command line.
-1. Input constraint: users must provide a stock code; stock names are not accepted.
+1. Input constraint: users can provide a stock code or stock name; stock names should be resolved via keyword search.
 1. Data access: the AI calls scripts in this directory to fetch structured data.
 1. Output: the AI generates structured Markdown results.
 1. Scope constraints: no sector analysis; users never call scripts directly, only the AI does.
 
 ## 2. Script Inventory
 
-### 2.1 Real-time quote (`scripts/stock_quote.py`)
+### 2.1 Stock search (`scripts/stock_search.py`)
+- **Purpose**: search stock code by keyword (stock name or partial code).
+
+**Usage:**
+```bash
+python3 stock_search.py <keyword> [--source auto|sina|tencent] [--limit N]
+```
+
+**Parameters:**
+- `keyword` (required): Stock name or keyword
+- `--source` (optional): `auto` (default), `sina`, or `tencent`
+- `--limit` (optional): Max results, default `10`, max `50`
+
+**Examples:**
+```bash
+python3 stock_search.py 贵州茅台
+python3 stock_search.py 茅台 --source sina
+python3 stock_search.py 6005 --limit 5
+```
+
+**Output (JSON):**
+```json
+{
+  "keyword": "贵州茅台",
+  "source": "sina",
+  "count": 1,
+  "items": [
+    {
+      "name": "贵州茅台",
+      "code": "600519",
+      "symbol": "sh600519",
+      "market": "SH",
+      "type": "stock"
+    }
+  ]
+}
+```
+
+### 2.2 Real-time quote (`scripts/stock_quote.py`)
 - **Purpose**: fetch current price, change, volume, and level-1 quotes.
 
 **Usage:**
@@ -57,7 +95,7 @@ python3 stock_quote.py sz000001
 }
 ```
 
-### 2.2 K-line data (`scripts/stock_kline.py`)
+### 2.3 K-line data (`scripts/stock_kline.py`)
 - **Purpose**: fetch K-line data for indicator calculation.
 
 **Usage:**
@@ -102,7 +140,7 @@ python3 stock_kline.py 600519 60 150
 }
 ```
 
-### 2.3 Technical indicators (`scripts/stock_indicators.py`)
+### 2.4 Technical indicators (`scripts/stock_indicators.py`)
 - **Purpose**: compute MA/MACD/KDJ/RSI/BOLL from K-line data.
 
 **Usage:**
@@ -174,7 +212,7 @@ python3 stock_indicators.py --file /tmp/kline.json
 }
 ```
 
-### 2.4 Keyword expander (`scripts/keyword_expander.py`)
+### 2.5 Keyword expander (`scripts/keyword_expander.py`)
 - **Purpose**: generate news search keywords from stock code + optional topic.
 
 **Usage:**
@@ -220,7 +258,7 @@ python3 keyword_expander.py --code 600519 --topic "并购" --extra "重组,资�
 }
 ```
 
-### 2.5 News fetcher (`scripts/news_fetcher.py`)
+### 2.6 News fetcher (`scripts/news_fetcher.py`)
 - **Purpose**: fetch news items within the last 24 hours by keyword or hotspot feeds.
 
 **Usage:**
@@ -295,8 +333,9 @@ python3 news_fetcher.py --mode keyword --keywords "600519" --limit 50
 ## 3. AI Usage Guide
 
 ### 3.1 Input Validation
-- Validate the user input as a stock code (e.g., `000001`, `600000`).
-- If missing or invalid, ask for a valid code. Do not accept stock names.
+- If input is a 6-digit stock code, proceed directly.
+- If input is a stock name or keyword, call `stock_search.py` to resolve candidate codes.
+- If multiple candidates are returned, ask the user to confirm the intended stock code.
 
 ### 3.2 Core Analysis Flow
 1. Call `stock_quote.py` to get current price and basic data.

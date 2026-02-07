@@ -24,6 +24,7 @@ def run_test(script_name):
 def main():
     """Run all test suites."""
     test_scripts = [
+        "test_stock_search.py",
         "test_stock_quote.py",
         "test_stock_kline.py",
         "test_stock_indicators.py",
