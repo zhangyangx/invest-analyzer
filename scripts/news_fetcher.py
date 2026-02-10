@@ -68,10 +68,19 @@ def parse_tz_offset(offset: str) -> timezone:
     return timezone(delta)
 
 
-def fetch(url, timeout=15):
+def fetch(url, timeout=15, retries=2):
+    """Fetch URL with retry logic."""
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        return resp.read(), resp.headers.get("Content-Type", "")
+    last_error = None
+    for attempt in range(retries + 1):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                return resp.read(), resp.headers.get("Content-Type", "")
+        except Exception as e:
+            last_error = e
+            if attempt < retries:
+                continue  # Retry
+    raise last_error
 
 
 def parse_time(text: str):
@@ -180,8 +189,12 @@ def fetch_hot_feeds(limit: int, tz_local: timezone):
     results = []
     per_feed = max(5, min(20, limit // max(1, len(HOT_FEEDS))))
     for name, url in HOT_FEEDS:
-        data, _ = fetch(url)
-        results.extend(parse_rss(data.decode("utf-8", errors="ignore"), name, per_feed, tz_local))
+        try:
+            data, _ = fetch(url)
+            results.extend(parse_rss(data.decode("utf-8", errors="ignore"), name, per_feed, tz_local))
+        except Exception as e:
+            # Log error but continue with other feeds
+            print(f"[WARN] Failed to fetch {name}: {e}", file=sys.stderr)
     return results
 
 

@@ -31,18 +31,26 @@ def load_input():
 
 
 def calc_ma(closes, periods):
-    out = {}
+    """计算MA指标，返回历史序列和当前值"""
+    result = {}
     for p in periods:
-        if len(closes) >= p:
-            out[f"MA{p}"] = round(sum(closes[-p:]) / p, 4)
-        else:
-            out[f"MA{p}"] = 0.0
-    return out
+        history = []
+        for i in range(p, len(closes) + 1):
+            ma_val = sum(closes[i - p:i]) / p
+            history.append(round(ma_val, 4))
+        result[f"MA{p}"] = {
+            "history": history,
+            "current": history[-1] if history else 0.0
+        }
+    return result
 
 
 def calc_macd(closes, short=12, long=26, signal=9):
+    """计算MACD指标，返回历史序列和当前值"""
     if len(closes) < long + signal:
-        return {"DIF": 0.0, "DEA": 0.0, "MACD": 0.0}
+        return {"DIF": {"history": [], "current": 0.0},
+                "DEA": {"history": [], "current": 0.0},
+                "MACD": {"history": [], "current": 0.0}}
 
     def ema(series, period):
         alpha = 2 / (period + 1)
@@ -57,19 +65,34 @@ def calc_macd(closes, short=12, long=26, signal=9):
     dea = ema(dif, signal)
     macd = [(dif[i] - dea[i]) * 2 for i in range(len(dif))]
 
+    # 从signal周期之后开始有有效数据
+    start_idx = signal - 1
     return {
-        "DIF": round(dif[-1], 4),
-        "DEA": round(dea[-1], 4),
-        "MACD": round(macd[-1], 4),
+        "DIF": {
+            "history": [round(v, 4) for v in dif[start_idx:]],
+            "current": round(dif[-1], 4)
+        },
+        "DEA": {
+            "history": [round(v, 4) for v in dea[start_idx:]],
+            "current": round(dea[-1], 4)
+        },
+        "MACD": {
+            "history": [round(v, 4) for v in macd[start_idx:]],
+            "current": round(macd[-1], 4)
+        },
     }
 
 
 def calc_kdj(highs, lows, closes, n=9, m1=3, m2=3):
+    """计算KDJ指标，返回历史序列和当前值"""
     if len(closes) < n + 2:
-        return {"K": 0.0, "D": 0.0, "J": 0.0}
+        return {"K": {"history": [], "current": 0.0},
+                "D": {"history": [], "current": 0.0},
+                "J": {"history": [], "current": 0.0}}
 
     k_values = [50.0]
     d_values = [50.0]
+    j_values = []
 
     start = len(closes) - (n + 2)
     for i in range(start + n, len(closes)):
@@ -84,19 +107,33 @@ def calc_kdj(highs, lows, closes, n=9, m1=3, m2=3):
         d = (m2 - 1) / m2 * d_values[-1] + 1 / m2 * k
         k_values.append(k)
         d_values.append(d)
+        j = 3 * k - 2 * d
+        j_values.append(j)
 
-    k = k_values[-1]
-    d = d_values[-1]
-    j = 3 * k - 2 * d
-    return {"K": round(k, 2), "D": round(d, 2), "J": round(j, 2)}
+    # 从第二个有效值开始（初始化值跳过）
+    return {
+        "K": {
+            "history": [round(v, 2) for v in k_values[2:]],
+            "current": round(k_values[-1], 2)
+        },
+        "D": {
+            "history": [round(v, 2) for v in d_values[2:]],
+            "current": round(d_values[-1], 2)
+        },
+        "J": {
+            "history": [round(v, 2) for v in j_values],
+            "current": round(j_values[-1], 2)
+        },
+    }
 
 
 def calc_rsi(closes, periods=(6, 12, 24)):
-    out = {}
+    """计算RSI指标，返回历史序列和当前值"""
+    result = {}
     if len(closes) < 2:
         for p in periods:
-            out[f"RSI{p}"] = 0.0
-        return out
+            result[f"RSI{p}"] = {"history": [], "current": 0.0}
+        return result
 
     gains = []
     losses = []
@@ -106,30 +143,60 @@ def calc_rsi(closes, periods=(6, 12, 24)):
         losses.append(abs(min(delta, 0.0)))
 
     for p in periods:
-        if len(closes) < p + 1:
-            out[f"RSI{p}"] = 0.0
-            continue
-        avg_gain = sum(gains[-p:]) / p
-        avg_loss = sum(losses[-p:]) / p
-        if avg_loss == 0:
-            rsi = 100.0
-        else:
-            rs = avg_gain / avg_loss
-            rsi = 100 - (100 / (1 + rs))
-        out[f"RSI{p}"] = round(rsi, 2)
-    return out
+        history = []
+        # 从第p+1个数据点开始有有效RSI
+        for i in range(p, len(gains) + 1):
+            avg_gain = sum(gains[i - p:i]) / p
+            avg_loss = sum(losses[i - p:i]) / p
+            if avg_loss == 0:
+                rsi = 100.0
+            else:
+                rs = avg_gain / avg_loss
+                rsi = 100 - (100 / (1 + rs))
+            history.append(round(rsi, 2))
+        result[f"RSI{p}"] = {
+            "history": history,
+            "current": history[-1] if history else 0.0
+        }
+    return result
 
 
 def calc_boll(closes, n=20, k=2):
+    """计算BOLL指标，返回历史序列和当前值"""
     if len(closes) < n:
-        return {"upper": 0.0, "middle": 0.0, "lower": 0.0}
-    window = closes[-n:]
-    mid = sum(window) / n
-    var = sum((x - mid) ** 2 for x in window) / n
-    std = math.sqrt(var)
-    upper = mid + k * std
-    lower = mid - k * std
-    return {"upper": round(upper, 4), "middle": round(mid, 4), "lower": round(lower, 4)}
+        return {"upper": {"history": [], "current": 0.0},
+                "middle": {"history": [], "current": 0.0},
+                "lower": {"history": [], "current": 0.0}}
+
+    upper_history = []
+    middle_history = []
+    lower_history = []
+
+    for i in range(n, len(closes) + 1):
+        window = closes[i - n:i]
+        mid = sum(window) / n
+        var = sum((x - mid) ** 2 for x in window) / n
+        std = math.sqrt(var)
+        upper = mid + k * std
+        lower = mid - k * std
+        upper_history.append(round(upper, 4))
+        middle_history.append(round(mid, 4))
+        lower_history.append(round(lower, 4))
+
+    return {
+        "upper": {
+            "history": upper_history,
+            "current": upper_history[-1] if upper_history else 0.0
+        },
+        "middle": {
+            "history": middle_history,
+            "current": middle_history[-1] if middle_history else 0.0
+        },
+        "lower": {
+            "history": lower_history,
+            "current": lower_history[-1] if lower_history else 0.0
+        },
+    }
 
 
 def main():
@@ -147,6 +214,7 @@ def main():
     closes = [safe_float(k.get("close")) for k in klines]
     highs = [safe_float(k.get("high")) for k in klines]
     lows = [safe_float(k.get("low")) for k in klines]
+    volumes = [safe_float(k.get("volume")) for k in klines] if klines else []
 
     if not closes or not highs or not lows:
         print(json.dumps({"error": "invalid_klines"}, ensure_ascii=False))
@@ -158,6 +226,11 @@ def main():
         "KDJ": calc_kdj(highs, lows, closes),
         "RSI": calc_rsi(closes),
         "BOLL": calc_boll(closes),
+        # 添加成交量历史数据用于量价分析
+        "volume": {
+            "history": volumes,
+            "current": volumes[-1] if volumes else 0
+        }
     }
 
     print(json.dumps(indicators, ensure_ascii=False))

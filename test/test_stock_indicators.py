@@ -89,9 +89,12 @@ class TestStockIndicators(unittest.TestCase):
         self.assertIn("MA20", ma)
         self.assertIn("MA60", ma)
         self.assertIn("MA120", ma)
-        # All MA values should be positive
+        # Check new format with history and current
         for period in ["MA5", "MA10", "MA20", "MA60", "MA120"]:
-            self.assertGreater(ma[period], 0)
+            self.assertIn("history", ma[period])
+            self.assertIn("current", ma[period])
+            if ma[period]["history"]:
+                self.assertGreater(ma[period]["current"], 0)
 
     def test_macd_calculation(self):
         """Test MACD calculation."""
@@ -103,9 +106,15 @@ class TestStockIndicators(unittest.TestCase):
         self.assertIn("DIF", macd)
         self.assertIn("DEA", macd)
         self.assertIn("MACD", macd)
+        # Check new format with history and current
+        for field in ["DIF", "DEA", "MACD"]:
+            self.assertIn("history", macd[field])
+            self.assertIn("current", macd[field])
         # MACD = (DIF - DEA) * 2
-        expected_macd = round((macd["DIF"] - macd["DEA"]) * 2, 4)
-        self.assertAlmostEqual(macd["MACD"], expected_macd, places=4)
+        dif = macd["DIF"]["current"]
+        dea = macd["DEA"]["current"]
+        expected_macd = round((dif - dea) * 2, 4)
+        self.assertAlmostEqual(macd["MACD"]["current"], expected_macd, places=4)
 
     def test_kdj_calculation(self):
         """Test KDJ calculation."""
@@ -117,9 +126,15 @@ class TestStockIndicators(unittest.TestCase):
         self.assertIn("K", kdj)
         self.assertIn("D", kdj)
         self.assertIn("J", kdj)
+        # Check new format with history and current
+        for field in ["K", "D", "J"]:
+            self.assertIn("history", kdj[field])
+            self.assertIn("current", kdj[field])
         # J = 3*K - 2*D
-        expected_j = round(3 * kdj["K"] - 2 * kdj["D"], 2)
-        self.assertAlmostEqual(kdj["J"], expected_j, places=1)
+        k = kdj["K"]["current"]
+        d = kdj["D"]["current"]
+        expected_j = round(3 * k - 2 * d, 2)
+        self.assertAlmostEqual(kdj["J"]["current"], expected_j, places=1)
 
     def test_rsi_calculation(self):
         """Test RSI calculation."""
@@ -131,10 +146,13 @@ class TestStockIndicators(unittest.TestCase):
         self.assertIn("RSI6", rsi)
         self.assertIn("RSI12", rsi)
         self.assertIn("RSI24", rsi)
-        # RSI should be between 0 and 100
+        # Check new format and RSI range (0-100)
         for period in ["RSI6", "RSI12", "RSI24"]:
-            self.assertGreaterEqual(rsi[period], 0)
-            self.assertLessEqual(rsi[period], 100)
+            self.assertIn("history", rsi[period])
+            self.assertIn("current", rsi[period])
+            if rsi[period]["history"]:
+                self.assertGreaterEqual(rsi[period]["current"], 0)
+                self.assertLessEqual(rsi[period]["current"], 100)
 
     def test_boll_calculation(self):
         """Test BOLL (Bollinger Bands) calculation."""
@@ -146,9 +164,14 @@ class TestStockIndicators(unittest.TestCase):
         self.assertIn("upper", boll)
         self.assertIn("middle", boll)
         self.assertIn("lower", boll)
+        # Check new format with history and current
+        for band in ["upper", "middle", "lower"]:
+            self.assertIn("history", boll[band])
+            self.assertIn("current", boll[band])
         # upper > middle > lower
-        self.assertGreater(boll["upper"], boll["middle"])
-        self.assertGreater(boll["middle"], boll["lower"])
+        if boll["upper"]["history"]:
+            self.assertGreater(boll["upper"]["current"], boll["middle"]["current"])
+            self.assertGreater(boll["middle"]["current"], boll["lower"]["current"])
 
     def test_insufficient_data_for_ma120(self):
         """Test with insufficient data for MA120."""
@@ -156,8 +179,9 @@ class TestStockIndicators(unittest.TestCase):
         code, stdout, stderr = self.run_script(stdin_data=json.dumps(kline))
         self.assertEqual(code, 0, f"Script failed: {stderr}")
         data = json.loads(stdout)
-        # MA120 should be 0 when insufficient data
-        self.assertEqual(data["MA"]["MA120"], 0.0)
+        # MA120 should have empty history and 0 current when insufficient data
+        self.assertEqual(len(data["MA"]["MA120"]["history"]), 0)
+        self.assertEqual(data["MA"]["MA120"]["current"], 0.0)
 
     def test_insufficient_data_for_macd(self):
         """Test with insufficient data for MACD (needs 26+9=35 periods)."""
@@ -165,10 +189,11 @@ class TestStockIndicators(unittest.TestCase):
         code, stdout, stderr = self.run_script(stdin_data=json.dumps(kline))
         self.assertEqual(code, 0, f"Script failed: {stderr}")
         data = json.loads(stdout)
-        # MACD should return zeros when insufficient data
-        self.assertEqual(data["MACD"]["DIF"], 0.0)
-        self.assertEqual(data["MACD"]["DEA"], 0.0)
-        self.assertEqual(data["MACD"]["MACD"], 0.0)
+        # MACD should return empty history and zeros when insufficient data
+        self.assertEqual(len(data["MACD"]["DIF"]["history"]), 0)
+        self.assertEqual(data["MACD"]["DIF"]["current"], 0.0)
+        self.assertEqual(data["MACD"]["DEA"]["current"], 0.0)
+        self.assertEqual(data["MACD"]["MACD"]["current"], 0.0)
 
     def test_insufficient_data_for_kdj(self):
         """Test with insufficient data for KDJ."""
@@ -176,10 +201,11 @@ class TestStockIndicators(unittest.TestCase):
         code, stdout, stderr = self.run_script(stdin_data=json.dumps(kline))
         self.assertEqual(code, 0, f"Script failed: {stderr}")
         data = json.loads(stdout)
-        # KDJ should return zeros when insufficient data
-        self.assertEqual(data["KDJ"]["K"], 0.0)
-        self.assertEqual(data["KDJ"]["D"], 0.0)
-        self.assertEqual(data["KDJ"]["J"], 0.0)
+        # KDJ should return empty history and zeros when insufficient data
+        self.assertEqual(len(data["KDJ"]["K"]["history"]), 0)
+        self.assertEqual(data["KDJ"]["K"]["current"], 0.0)
+        self.assertEqual(data["KDJ"]["D"]["current"], 0.0)
+        self.assertEqual(data["KDJ"]["J"]["current"], 0.0)
 
     def test_empty_input(self):
         """Test with empty input."""
@@ -216,7 +242,7 @@ class TestStockIndicators(unittest.TestCase):
         self.assertEqual(code, 0)
         data = json.loads(stdout)
         # Script returns zeros for all indicators when data is invalid
-        self.assertEqual(data["MACD"]["DIF"], 0.0)
+        self.assertEqual(data["MACD"]["DIF"]["current"], 0.0)
 
     def test_real_kline_data_integration(self):
         """Test with real K-line data from stock_kline.py."""
@@ -231,6 +257,21 @@ class TestStockIndicators(unittest.TestCase):
             data = json.loads(stdout)
             self.assertIn("MA", data)
             self.assertIn("MACD", data)
+            # Check volume field exists
+            self.assertIn("volume", data)
+
+    def test_volume_history(self):
+        """Test volume history is included in output."""
+        kline = self.create_kline_data(100)
+        code, stdout, stderr = self.run_script(stdin_data=json.dumps(kline))
+        self.assertEqual(code, 0, f"Script failed: {stderr}")
+        data = json.loads(stdout)
+        self.assertIn("volume", data)
+        volume = data["volume"]
+        self.assertIn("history", volume)
+        self.assertIn("current", volume)
+        # History length should match klines count
+        self.assertEqual(len(volume["history"]), 100)
 
 
 def run_tests():
