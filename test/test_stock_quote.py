@@ -87,11 +87,12 @@ class TestStockQuote(unittest.TestCase):
         data = json.loads(stdout)
         required_fields = [
             "name", "code", "symbol", "current",
-            "prev_close", "open", "high", "low", "volume",
+            "prev_close", "open", "high", "low", "volume", "amount",
             "change", "pct_change"
         ]
         for field in required_fields:
             self.assertIn(field, data, f"Missing field: {field}")
+        self.assertGreaterEqual(data["amount"], 0)
 
     def test_no_arguments_error(self):
         """Test that script fails gracefully with no arguments."""

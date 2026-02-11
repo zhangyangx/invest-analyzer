@@ -29,7 +29,7 @@ HOT_FEEDS = [
 ]
 
 DEFAULT_CONFIG = {
-    "max_items": 10,
+    "max_items": 30,
     "timezone": "+08:00",
 }
 
@@ -68,7 +68,7 @@ def parse_tz_offset(offset: str) -> timezone:
     return timezone(delta)
 
 
-def fetch(url, timeout=15, retries=2):
+def fetch(url, timeout=15, retries=1):
     """Fetch URL with retry logic."""
     req = urllib.request.Request(url, headers={"User-Agent": USER_AGENT})
     last_error = None
@@ -210,13 +210,22 @@ def main():
     if args.mode == "keyword" and not args.keyword and not args.keywords:
         print(json.dumps({"error": "missing_keyword"}, ensure_ascii=False))
         sys.exit(2)
+    if args.hours < 0:
+        print(json.dumps({"error": "invalid_hours"}, ensure_ascii=False))
+        sys.exit(2)
+    if args.limit is not None and args.limit <= 0:
+        print(json.dumps({"error": "invalid_limit"}, ensure_ascii=False))
+        sys.exit(2)
 
     try:
         config = load_config()
         tz_local = parse_tz_offset(config.get("timezone"))
-        config_limit = int(config.get("max_items") or 10)
-        arg_limit = args.limit if args.limit is not None else config_limit
-        base_limit = max(arg_limit, config_limit)
+        config_limit = int(config.get("max_items") or DEFAULT_CONFIG["max_items"])
+        if config_limit <= 0:
+            config_limit = DEFAULT_CONFIG["max_items"]
+        final_limit = args.limit if args.limit is not None else config_limit
+        # Fetch a bit more to tolerate dedupe/time filtering, then trim to final limit.
+        base_limit = max(final_limit, config_limit)
 
         if args.mode == "keyword":
             terms = []
@@ -246,8 +255,8 @@ def main():
         # Sort by time descending (newest first)
         items.sort(key=lambda x: x.get("_dt") or "", reverse=True)
 
-        # Cap final results by config limit
-        items = items[:config_limit]
+        # Cap final results by user limit (or config default when user omits --limit)
+        items = items[:final_limit]
 
         # remove helper field
         for it in items:

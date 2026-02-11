@@ -87,6 +87,7 @@ python3 stock_quote.py sh600519
   "high": 1690.00,
   "low": 1670.00,
   "volume": 2500000,
+  "amount": 4200000000,
   "change": 10.00,
   "pct_change": 0.60
 }
@@ -220,8 +221,6 @@ python3 keyword_expander.py --name "贵州茅台" --topic-en "earnings"
 {
   "keywords": [
     "贵州茅台",
-    "贵州茅台 股票",
-    "贵州茅台 公司",
     "财报",
     "贵州茅台 财报"
   ]
@@ -268,7 +267,7 @@ python3 news_fetcher.py --mode hot --hours 24
       "title": "Stock Market Hits Record High",
       "link": "https://example.com/article1",
       "source": "Google News",
-      "time": "Tue, 05 Feb 2026 10:30:00 GMT"
+      "time": "2026-02-05 18:30:00 +0800"
     }
   ],
   "count": 1
@@ -300,7 +299,6 @@ python3 news_fetcher.py --mode hot --hours 24
 ### 3.4 关键词生成与翻译规则
 - 使用 `keyword_expander.py --name <股票名称>` 生成搜索关键词
 - **有主题**：添加 `--topic <主题>` 或 `--topic-en <英文主题>`
-- **无主题**：脚本自动生成股票名称+通用财经词汇的组合
 - **AI翻译要求**：调用 `news_fetcher.py` 前，AI必须将所有中文关键词翻译成英文
   - 股票名称 → 英文代码或英文名（如：贵州茅台 → KWE 或 Moutai）
   - 主题词汇 → 英文财经术语（如：财报 → earnings，业绩 → performance）

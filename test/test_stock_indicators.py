@@ -239,10 +239,9 @@ class TestStockIndicators(unittest.TestCase):
         """Test with missing required OHLC fields."""
         kline = {"klines": [{"open": "100"}]}  # Missing high, low, close
         code, stdout, stderr = self.run_script(stdin_data=json.dumps(kline))
-        self.assertEqual(code, 0)
+        self.assertEqual(code, 4)
         data = json.loads(stdout)
-        # Script returns zeros for all indicators when data is invalid
-        self.assertEqual(data["MACD"]["DIF"]["current"], 0.0)
+        self.assertEqual(data.get("error"), "invalid_klines")
 
     def test_real_kline_data_integration(self):
         """Test with real K-line data from stock_kline.py."""

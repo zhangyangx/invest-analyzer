@@ -44,10 +44,16 @@ def main():
         except Exception:
             print(json.dumps({"error": "invalid_scale"}, ensure_ascii=False))
             sys.exit(3)
+        if scale <= 0:
+            print(json.dumps({"error": "invalid_scale"}, ensure_ascii=False))
+            sys.exit(3)
     if len(sys.argv) > 3:
         try:
             count = int(sys.argv[3])
         except Exception:
+            print(json.dumps({"error": "invalid_count"}, ensure_ascii=False))
+            sys.exit(4)
+        if count <= 0:
             print(json.dumps({"error": "invalid_count"}, ensure_ascii=False))
             sys.exit(4)
 

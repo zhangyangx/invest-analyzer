@@ -298,7 +298,7 @@ class TestNewsFetcher(unittest.TestCase):
         self.assertIn("Google News", sources)
 
     def test_no_helper_field_in_output(self):
-        """Test that 'datetime' helper field is not in final output."""
+        """Test that helper field is not in final output."""
         code, stdout, stderr = self.run_script(
             "--mode", "keyword",
             "--keyword", "test"
@@ -306,7 +306,7 @@ class TestNewsFetcher(unittest.TestCase):
         self.assertEqual(code, 0, f"Script failed: {stderr}")
         data = json.loads(stdout)
         for item in data["items"]:
-            self.assertNotIn("datetime", item)
+            self.assertNotIn("_dt", item)
 
     def test_count_field_matches_items_length(self):
         """Test that 'count' field matches actual items length."""
@@ -430,7 +430,10 @@ class TestNewsFetcherParsing(unittest.TestCase):
 
 def run_tests():
     """Run all tests and print summary."""
-    suite = unittest.TestLoader().loadTestsFromTestCase(TestNewsFetcher)
+    suite = unittest.TestSuite()
+    loader = unittest.TestLoader()
+    suite.addTests(loader.loadTestsFromTestCase(TestNewsFetcher))
+    suite.addTests(loader.loadTestsFromTestCase(TestNewsFetcherParsing))
     runner = unittest.TextTestRunner(verbosity=2)
     result = runner.run(suite)
 

@@ -36,114 +36,73 @@ def extract_quoted_value(raw: str) -> str:
     return raw[start + 1:end]
 
 
-def parse_sina(raw: str, limit: int) -> list:
-    payload = extract_quoted_value(raw)
+def parse_record_fields(fields):
+    symbol = ""
+    code = ""
+    name = ""
+    item_type = fields[0] if fields else ""
+
+    for field in fields:
+        if re.fullmatch(r"(sh|sz)\d{6}", field.lower()):
+            symbol = field.lower()
+            break
+
+    for field in fields:
+        if re.fullmatch(r"\d{6}", field):
+            code = field
+            break
+
+    for field in fields:
+        if field and not re.search(r"\d", field) and len(field) >= 2:
+            name = field
+            break
+
+    if not code and symbol:
+        code = symbol[2:]
+    if not symbol and code:
+        symbol = normalize_symbol(code)
+    if not code or not name or not symbol:
+        return None
+
+    market = "SH" if symbol.startswith("sh") else "SZ"
+    return {
+        "name": name,
+        "code": code,
+        "symbol": symbol,
+        "market": market,
+        "type": item_type,
+    }
+
+
+def parse_records(payload: str, record_sep: str, field_sep: str, limit: int) -> list:
     if not payload:
         return []
-    records = [rec.strip() for rec in payload.split(";") if rec.strip()]
+    records = [rec.strip() for rec in payload.split(record_sep) if rec.strip()]
     items = []
     for record in records:
-        fields = [f.strip() for f in record.split(",") if f.strip()]
+        fields = [f.strip() for f in record.split(field_sep) if f.strip()]
         if not fields:
             continue
 
-        symbol = ""
-        code = ""
-        name = ""
-        item_type = fields[0] if fields else ""
-
-        for field in fields:
-            if re.fullmatch(r"(sh|sz)\d{6}", field.lower()):
-                symbol = field.lower()
-                break
-
-        for field in fields:
-            if re.fullmatch(r"\d{6}", field):
-                code = field
-                break
-
-        for field in fields:
-            if field and not re.search(r"\d", field) and len(field) >= 2:
-                name = field
-                break
-
-        if not code and symbol:
-            code = symbol[2:]
-        if not symbol and code:
-            symbol = normalize_symbol(code)
-
-        if not code or not name or not symbol:
+        item = parse_record_fields(fields)
+        if not item:
             continue
 
-        market = "SH" if symbol.startswith("sh") else "SZ"
-        items.append(
-            {
-                "name": name,
-                "code": code,
-                "symbol": symbol,
-                "market": market,
-                "type": item_type,
-            }
-        )
+        items.append(item)
         if len(items) >= limit:
             break
 
     return items
+
+
+def parse_sina(raw: str, limit: int) -> list:
+    payload = extract_quoted_value(raw)
+    return parse_records(payload, record_sep=";", field_sep=",", limit=limit)
 
 
 def parse_tencent(raw: str, limit: int) -> list:
     payload = extract_quoted_value(raw)
-    if not payload:
-        return []
-    records = [rec.strip() for rec in payload.split("^") if rec.strip()]
-    items = []
-    for record in records:
-        fields = [f.strip() for f in record.split("~") if f.strip()]
-        if not fields:
-            continue
-
-        symbol = ""
-        code = ""
-        name = ""
-        item_type = fields[0] if fields else ""
-
-        for field in fields:
-            if re.fullmatch(r"(sh|sz)\d{6}", field.lower()):
-                symbol = field.lower()
-                break
-
-        for field in fields:
-            if re.fullmatch(r"\d{6}", field):
-                code = field
-                break
-
-        for field in fields:
-            if field and not re.search(r"\d", field) and len(field) >= 2:
-                name = field
-                break
-
-        if not code and symbol:
-            code = symbol[2:]
-        if not symbol and code:
-            symbol = normalize_symbol(code)
-
-        if not code or not name or not symbol:
-            continue
-
-        market = "SH" if symbol.startswith("sh") else "SZ"
-        items.append(
-            {
-                "name": name,
-                "code": code,
-                "symbol": symbol,
-                "market": market,
-                "type": item_type,
-            }
-        )
-        if len(items) >= limit:
-            break
-
-    return items
+    return parse_records(payload, record_sep="^", field_sep="~", limit=limit)
 
 
 def search_sina(keyword: str, limit: int) -> list:

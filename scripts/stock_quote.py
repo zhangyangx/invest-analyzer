@@ -40,6 +40,16 @@ def parse_quote(raw: str, symbol: str) -> dict:
     prev_close = safe_float(parts[4]) if len(parts) > 4 else 0.0
     open_price = safe_float(parts[5]) if len(parts) > 5 else 0.0
     volume = safe_int(parts[6]) if len(parts) > 6 else 0
+    amount = 0.0
+
+    if len(parts) > 35 and "/" in parts[35]:
+        # Prefer the precise amount from the bundled "price/volume/amount" field.
+        ratio_parts = parts[35].split("/")
+        if len(ratio_parts) >= 3:
+            amount = safe_float(ratio_parts[2])
+    if amount <= 0 and len(parts) > 37:
+        # Fallback: index 37 is usually turnover amount in 10k CNY.
+        amount = round(safe_float(parts[37]) * 10000, 2)
 
     high = safe_float(parts[33]) if len(parts) > 33 else 0.0
     low = safe_float(parts[34]) if len(parts) > 34 else 0.0
@@ -60,6 +70,7 @@ def parse_quote(raw: str, symbol: str) -> dict:
         "high": high,
         "low": low,
         "volume": volume,
+        "amount": amount,
         "change": round(change, 4),
         "pct_change": pct_change,
     }

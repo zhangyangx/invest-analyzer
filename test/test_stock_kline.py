@@ -143,9 +143,23 @@ class TestStockKline(unittest.TestCase):
         data = json.loads(stdout)
         self.assertEqual(data.get("error"), "invalid_scale")
 
+    def test_invalid_scale_non_positive(self):
+        """Test with non-positive scale parameter."""
+        code, stdout, stderr = self.run_script("600519", "0")
+        self.assertEqual(code, 3)
+        data = json.loads(stdout)
+        self.assertEqual(data.get("error"), "invalid_scale")
+
     def test_invalid_count(self):
         """Test with invalid count parameter."""
         code, stdout, stderr = self.run_script("600519", "240", "invalid")
+        self.assertEqual(code, 4)
+        data = json.loads(stdout)
+        self.assertEqual(data.get("error"), "invalid_count")
+
+    def test_invalid_count_non_positive(self):
+        """Test with non-positive count parameter."""
+        code, stdout, stderr = self.run_script("600519", "240", "0")
         self.assertEqual(code, 4)
         data = json.loads(stdout)
         self.assertEqual(data.get("error"), "invalid_count")

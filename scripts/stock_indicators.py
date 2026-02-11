@@ -12,13 +12,6 @@ import math
 import sys
 
 
-def safe_float(val):
-    try:
-        return float(val)
-    except Exception:
-        return 0.0
-
-
 def load_input():
     if len(sys.argv) >= 3 and sys.argv[1] == "--file":
         with open(sys.argv[2], "r", encoding="utf-8") as f:
@@ -28,6 +21,41 @@ def load_input():
     if not raw:
         return {}
     return json.loads(raw)
+
+
+def to_float(val):
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+
+def parse_klines(klines):
+    closes = []
+    highs = []
+    lows = []
+    volumes = []
+    required_fields = ("open", "high", "low", "close")
+
+    for item in klines:
+        if not isinstance(item, dict):
+            return None, None, None, None
+        if any(field not in item for field in required_fields):
+            return None, None, None, None
+
+        close = to_float(item.get("close"))
+        high = to_float(item.get("high"))
+        low = to_float(item.get("low"))
+        volume = to_float(item.get("volume"))
+        if close is None or high is None or low is None:
+            return None, None, None, None
+
+        closes.append(close)
+        highs.append(high)
+        lows.append(low)
+        volumes.append(volume if volume is not None else 0.0)
+
+    return closes, highs, lows, volumes
 
 
 def calc_ma(closes, periods):
@@ -211,12 +239,8 @@ def main():
         print(json.dumps({"error": "no_klines"}, ensure_ascii=False))
         sys.exit(3)
 
-    closes = [safe_float(k.get("close")) for k in klines]
-    highs = [safe_float(k.get("high")) for k in klines]
-    lows = [safe_float(k.get("low")) for k in klines]
-    volumes = [safe_float(k.get("volume")) for k in klines] if klines else []
-
-    if not closes or not highs or not lows:
+    closes, highs, lows, volumes = parse_klines(klines)
+    if closes is None:
         print(json.dumps({"error": "invalid_klines"}, ensure_ascii=False))
         sys.exit(4)
 
