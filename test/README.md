@@ -11,8 +11,8 @@ This directory contains comprehensive test suites for all invest-analyzer script
 | `test_stock_kline.py` | `scripts/stock_kline.py` | 17 tests | All scales, counts, stock codes |
 | `test_stock_indicators.py` | `scripts/stock_indicators.py` | 16 tests | All indicators, stdin/file input, edge cases |
 | `test_keyword_expander.py` | `scripts/keyword_expander.py` | 18 tests | All parameters, deduplication, normalization |
-| `test_news_fetcher.py` | `scripts/news_fetcher.py` | 22 tests | Both modes, filtering, sources, time sorting |
-| `third_party_api_checks.py` | API connectivity | 10 checks | External API availability |
+| `test_news_fetcher.py` | `scripts/news_fetcher.py` | 18 tests | Google News keyword search, filtering, time sorting |
+| `third_party_api_checks.py` | API connectivity | 3 checks | External API availability |
 
 ## Running Tests
 
@@ -110,13 +110,11 @@ python3 -m unittest test.test_stock_quote.TestStockQuote.test_sh_stock_code_6dig
 - ✓ Whitespace handling
 - ✓ Error handling (invalid codes)
 
-### news_fetcher.py (22 tests)
-- ✓ Keyword mode (single/multiple keywords)
-- ✓ Hot mode (all hotspot feeds)
-- ✓ All parameters (--hours, --limit, --mode)
+### news_fetcher.py (18 tests)
+- ✓ Single/multiple keywords
+- ✓ All parameters (--hours, --limit)
 - ✓ Item structure validation
 - ✓ Time-based filtering
-- ✓ Source validation
 - ✓ Duplicate removal
 - ✓ Chinese keywords
 - ✓ Google News integration
@@ -124,17 +122,16 @@ python3 -m unittest test.test_stock_quote.TestStockQuote.test_sh_stock_code_6dig
 - ✓ Count field accuracy
 - ✓ Error handling (missing keywords)
 
-### third_party_api_checks.py (10 checks)
+### stock_search.py (5 tests)
+- ✓ Keyword search (default source)
+- ✓ Source selection (sina/tencent)
+- ✓ Result structure validation
+- ✓ Error handling (missing args, blank keyword)
+
+### third_party_api_checks.py (3 checks)
 - ✓ Tencent Quote API
 - ✓ Sina K-line API
 - ✓ Google News RSS
-- ✓ Hacker News RSS
-- ✓ Reddit r/finance RSS
-- ✓ Reddit r/investing RSS
-- ✓ BBC Business RSS
-- ✓ CNBC RSS
-- ✓ Baidu Finance RSS
-- ✓ Baidu Stock RSS
 
 ## Requirements
 
@@ -186,8 +183,3 @@ When adding new features or scripts:
 3. Include tests for all parameters and edge cases
 4. Add the new test to `run_all_tests.py`
 5. Update this README with coverage details
-### stock_search.py (5 tests)
-- ✓ Keyword search (default source)
-- ✓ Source selection (sina/tencent)
-- ✓ Result structure validation
-- ✓ Error handling (missing args, blank keyword)

@@ -125,15 +125,8 @@ def main():
     test_tencent_quote(results)
     test_sina_kline(results)
 
-    # News/RSS sources
+    # News/RSS source (Google News only)
     test_rss_source(results, "Google News RSS search", "https://news.google.com/rss/search?q=China+stock&hl=en-US&gl=US&ceid=US:en")
-    test_rss_source(results, "Hacker News RSS", "https://hnrss.org/frontpage")
-    test_rss_source(results, "Reddit r/finance RSS", "https://www.reddit.com/r/finance/.rss")
-    test_rss_source(results, "Reddit r/investing RSS", "https://www.reddit.com/r/investing/.rss")
-    test_rss_source(results, "BBC Business RSS", "https://feeds.bbci.co.uk/news/business/rss.xml")
-    test_rss_source(results, "CNBC RSS", "https://www.cnbc.com/id/10000664/device/rss/rss.html")
-    test_rss_source(results, "Baidu Finance RSS", "https://news.baidu.com/n?cmd=1&class=finannews&tn=rss&sub=0")
-    test_rss_source(results, "Baidu Stock RSS", "https://news.baidu.com/n?cmd=1&class=stock&tn=rss&sub=0")
 
     # Summary
     print("Third-party API checks")

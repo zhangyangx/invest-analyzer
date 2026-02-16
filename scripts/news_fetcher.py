@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 News fetcher script.
-Supports keyword search (Google News RSS) and hotspot feeds (RSS list).
+Supports keyword search via Google News RSS.
 Output: JSON list of {title, link, source, time}
 """
 
@@ -17,16 +17,6 @@ from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
 USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
-
-HOT_FEEDS = [
-    ("Hacker News", "https://hnrss.org/frontpage"),
-    ("Reddit Finance", "https://www.reddit.com/r/finance/.rss"),
-    ("Reddit Investing", "https://www.reddit.com/r/investing/.rss"),
-    ("BBC Business", "https://feeds.bbci.co.uk/news/business/rss.xml"),
-    ("CNBC", "https://www.cnbc.com/id/10000664/device/rss/rss.html"),
-    ("Baidu Finance", "https://news.baidu.com/n?cmd=1&class=finannews&tn=rss&sub=0"),
-    ("Baidu Stock", "https://news.baidu.com/n?cmd=1&class=stock&tn=rss&sub=0"),
-]
 
 DEFAULT_CONFIG = {
     "max_items": 30,
@@ -185,29 +175,15 @@ def fetch_keyword_news(keyword: str, limit: int, tz_local: timezone):
     return parse_rss(data.decode("utf-8", errors="ignore"), "Google News", limit, tz_local)
 
 
-def fetch_hot_feeds(limit: int, tz_local: timezone):
-    results = []
-    per_feed = max(5, min(20, limit // max(1, len(HOT_FEEDS))))
-    for name, url in HOT_FEEDS:
-        try:
-            data, _ = fetch(url)
-            results.extend(parse_rss(data.decode("utf-8", errors="ignore"), name, per_feed, tz_local))
-        except Exception as e:
-            # Log error but continue with other feeds
-            print(f"[WARN] Failed to fetch {name}: {e}", file=sys.stderr)
-    return results
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--keyword", type=str, default="")
     parser.add_argument("--keywords", type=str, default="")
     parser.add_argument("--hours", type=int, default=24)
     parser.add_argument("--limit", type=int, default=None)
-    parser.add_argument("--mode", type=str, choices=["keyword", "hot"], default="keyword")
     args = parser.parse_args()
 
-    if args.mode == "keyword" and not args.keyword and not args.keywords:
+    if not args.keyword and not args.keywords:
         print(json.dumps({"error": "missing_keyword"}, ensure_ascii=False))
         sys.exit(2)
     if args.hours < 0:
@@ -227,28 +203,25 @@ def main():
         # Fetch a bit more to tolerate dedupe/time filtering, then trim to final limit.
         base_limit = max(final_limit, config_limit)
 
-        if args.mode == "keyword":
-            terms = []
-            if args.keywords:
-                terms = [t.strip() for t in args.keywords.split(",") if t.strip()]
-            elif args.keyword:
-                terms = [args.keyword.strip()]
+        terms = []
+        if args.keywords:
+            terms = [t.strip() for t in args.keywords.split(",") if t.strip()]
+        elif args.keyword:
+            terms = [args.keyword.strip()]
 
-            items = []
-            for t in terms:
-                items.extend(fetch_keyword_news(t, base_limit, tz_local))
-            # dedupe by title+link
-            seen = set()
-            deduped = []
-            for it in items:
-                key = f"{it.get('title','')}|{it.get('link','')}"
-                if key in seen:
-                    continue
-                seen.add(key)
-                deduped.append(it)
-            items = deduped
-        else:
-            items = fetch_hot_feeds(base_limit, tz_local)
+        items = []
+        for t in terms:
+            items.extend(fetch_keyword_news(t, base_limit, tz_local))
+        # dedupe by title+link
+        seen = set()
+        deduped = []
+        for it in items:
+            key = f"{it.get('title','')}|{it.get('link','')}"
+            if key in seen:
+                continue
+            seen.add(key)
+            deduped.append(it)
+        items = deduped
 
         items = filter_by_hours(items, args.hours, tz_local)
 

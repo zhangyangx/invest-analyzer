@@ -106,9 +106,16 @@ python3 stock_kline.py <股票代码> [周期] [数量]
 
 **参数：**
 - `stock_code`（必填）：股票代码
-- `scale`（可选）：K 线周期，默认 `240`
-  - 常用值：`5`=5分、`15`=15分、`60`=1小时、`240`=日线
+- `scale`（可选）：K 线周期（分钟），默认 `240`
 - `count`（可选）：数据条数，默认 `120`
+
+**时间周期说明：**
+| Scale | 含义 | 用途 |
+|-------|------|------|
+| `5` | 5分钟K线 | 日内短线、分时走势 |
+| `15` | 15分钟K线 | 短线参考 |
+| `60` | 60分钟K线 | 日内波段 |
+| `240` | 日K线（默认） | 中长期趋势 |
 
 **示例：**
 ```bash
@@ -231,22 +238,18 @@ python3 keyword_expander.py --name "贵州茅台" --topic-en "earnings"
 
 ### 2.6 新闻获取 (`scripts/news_fetcher.py`)
 
-获取最近 24 小时内的相关新闻。
+通过 Google News RSS 获取相关新闻。
 
 **用法：**
 ```bash
-# 关键词搜索模式
-python3 news_fetcher.py --mode keyword --keyword "<英文关键词>" --hours 24 --limit 30
+# 单关键词搜索
+python3 news_fetcher.py --keyword "<英文关键词>" --hours 24 --limit 30
 
 # 多关键词搜索
-python3 news_fetcher.py --mode keyword --keywords "AAPL,Apple,iPhone" --hours 24
-
-# 热点源模式
-python3 news_fetcher.py --mode hot --hours 24
+python3 news_fetcher.py --keywords "AAPL,Apple,iPhone" --hours 24
 ```
 
 **参数：**
-- `--mode`（可选）：`keyword` 或 `hot`（热点源），默认 `keyword`
 - `--keyword`（可选）：单个关键词
 - `--keywords`（可选）：逗号分隔的多个关键词
 - `--hours`（可选）：时间窗口（小时），默认 24
@@ -256,8 +259,6 @@ python3 news_fetcher.py --mode hot --hours 24
 - Google News RSS 对英文关键词支持最好
 - AI必须将中文关键词翻译为英文后传入此脚本
 - 例如：贵州茅台 → "Moutai" 或 "KWE"；财报 → "earnings"
-
-**热点源包括：** Hacker News、Reddit 财经板块、BBC Business、CNBC、百度财经等
 
 **输出（JSON）：**
 ```json
@@ -283,8 +284,15 @@ python3 news_fetcher.py --mode hot --hours 24
 
 ### 3.2 核心分析流程
 1. 调用 `stock_quote.py` 获取实时行情
-2. 调用 `stock_kline.py` 获取 K 线数据
-3. 调用 `stock_indicators.py` 计算技术指标
+2. **必须同时分析两个时间周期的 K 线和技术指标：**
+   ```bash
+   # 5分钟K线 + 指标（日内短线分析）
+   python3 stock_kline.py 600519 5 200 | python3 stock_indicators.py
+
+   # 日K线 + 指标（中长期趋势分析）
+   python3 stock_kline.py 600519 240 120 | python3 stock_indicators.py
+   ```
+3. 输出报告需包含两个维度的技术分析
 
 ### 3.3 新闻搜索触发条件
 
@@ -450,7 +458,7 @@ python3 news_fetcher.py --mode hot --hours 24
 
 ## 六、输出模板
 
-AI 必须严格按以下结构输出 Markdown 报告：
+AI 必须严格按以下结构输出 Markdown 报告，**必须包含日线和5分钟两个周期的技术分析**：
 
 ```markdown
 # 股票分析报告｜{股票代码} {股票名称}
@@ -471,7 +479,7 @@ AI 必须严格按以下结构输出 Markdown 报告：
 | 成交量 | {volume} |
 | 成交额 | {amount} |
 
-## 三、技术指标
+## 三、日线技术分析
 ### 3.1 趋势类
 | 指标 | 数值 | 解读 |
 |---|---|---|
@@ -490,20 +498,38 @@ AI 必须严格按以下结构输出 Markdown 报告：
 |---|---|---|
 | BOLL | 上 {boll_upper} / 中 {boll_mid} / 下 {boll_lower} | {boll_note} |
 
-## 四、资讯与影响
+## 四、5分钟短线分析
+### 4.1 趋势类
+| 指标 | 数值 | 解读 |
+|---|---|---|
+| MA5/10/20 | {5m_ma5} / {5m_ma10} / {5m_ma20} | {5m_ma_note} |
+
+### 4.2 动能类
+| 指标 | 数值 | 解读 |
+|---|---|---|
+| MACD | DIF {5m_dif}, DEA {5m_dea}, MACD {5m_macd} | {5m_macd_note} |
+| KDJ | K {5m_k}, D {5m_d}, J {5m_j} | {5m_kdj_note} |
+
+### 4.3 日内走势解读
+{intraday_analysis}
+
+## 五、资讯与影响
 | 时间 | 来源 | 主题标签 | 标题 | 摘要 | 影响判断 |
 |---|---|---|---|---|---|
 | {time} | {source} | {topic_tag} | {title_cn} | {summary_cn} | {impact} |
 
-## 五、综合判断
-### 5.1 技术面总结
+## 六、综合判断
+### 6.1 技术面总结
 {technical_summary}
 
-### 5.2 结论与风险提示
+### 6.2 结论与风险提示
 | 项目 | 内容 |
 |---|---|
 | 投资建议 | {investment_advice} |
 | 风险提示 | {risk_note} |
 ```
 
-**注：** 第四部分「资讯与影响」仅在触发新闻搜索时包含。如触发但无新闻，显示：`| - | - | - | 过去24小时无相关新闻 | - | - |`
+**注：**
+- 第三部分「日线技术分析」基于日K线（scale=240）
+- 第四部分「5分钟短线分析」基于5分钟K线（scale=5），用于日内走势判断
+- 第五部分「资讯与影响」仅在触发新闻搜索时包含。如触发但无新闻，显示：`| - | - | - | 过去24小时无相关新闻 | - | - |`
