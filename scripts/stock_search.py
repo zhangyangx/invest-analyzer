@@ -8,11 +8,13 @@ Output: JSON
 
 import argparse
 import json
+import os
 import re
 import sys
 import urllib.parse
 import urllib.request
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _utils import USER_AGENT, normalize_symbol
 
 
