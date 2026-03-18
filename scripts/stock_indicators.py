@@ -113,17 +113,18 @@ def calc_macd(closes, short=12, long=26, signal=9):
 
 def calc_kdj(highs, lows, closes, n=9, m1=3, m2=3):
     """计算KDJ指标，返回历史序列和当前值"""
-    if len(closes) < n + 2:
+    if len(closes) < n:
         return {"K": {"history": [], "current": 0.0},
                 "D": {"history": [], "current": 0.0},
                 "J": {"history": [], "current": 0.0}}
 
-    k_values = [50.0]
-    d_values = [50.0]
+    k_prev = 50.0
+    d_prev = 50.0
+    k_history = []
+    d_history = []
     j_values = []
 
-    start = len(closes) - (n + 2)
-    for i in range(start + n, len(closes)):
+    for i in range(n - 1, len(closes)):
         window_high = max(highs[i - n + 1:i + 1])
         window_low = min(lows[i - n + 1:i + 1])
         close = closes[i]
@@ -131,22 +132,25 @@ def calc_kdj(highs, lows, closes, n=9, m1=3, m2=3):
             rsv = 50.0
         else:
             rsv = (close - window_low) / (window_high - window_low) * 100
-        k = (m1 - 1) / m1 * k_values[-1] + 1 / m1 * rsv
-        d = (m2 - 1) / m2 * d_values[-1] + 1 / m2 * k
-        k_values.append(k)
-        d_values.append(d)
-        j = 3 * k - 2 * d
-        j_values.append(j)
 
-    # 从第二个有效值开始（初始化值跳过）
+        k = (m1 - 1) / m1 * k_prev + 1 / m1 * rsv
+        d = (m2 - 1) / m2 * d_prev + 1 / m2 * k
+        j = 3 * k - 2 * d
+
+        k_history.append(round(k, 2))
+        d_history.append(round(d, 2))
+        j_values.append(j)
+        k_prev = k
+        d_prev = d
+
     return {
         "K": {
-            "history": [round(v, 2) for v in k_values[2:]],
-            "current": round(k_values[-1], 2)
+            "history": k_history,
+            "current": k_history[-1]
         },
         "D": {
-            "history": [round(v, 2) for v in d_values[2:]],
-            "current": round(d_values[-1], 2)
+            "history": d_history,
+            "current": d_history[-1]
         },
         "J": {
             "history": [round(v, 2) for v in j_values],
@@ -172,16 +176,24 @@ def calc_rsi(closes, periods=(6, 12, 24)):
 
     for p in periods:
         history = []
-        # 从第p+1个数据点开始有有效RSI
-        for i in range(p, len(gains) + 1):
-            avg_gain = sum(gains[i - p:i]) / p
-            avg_loss = sum(losses[i - p:i]) / p
-            if avg_loss == 0:
-                rsi = 100.0
-            else:
-                rs = avg_gain / avg_loss
-                rsi = 100 - (100 / (1 + rs))
-            history.append(round(rsi, 2))
+        if len(gains) >= p:
+            avg_gain = sum(gains[:p]) / p
+            avg_loss = sum(losses[:p]) / p
+
+            def calc_rsi_value(current_gain, current_loss):
+                if current_loss == 0:
+                    return 100.0
+                if current_gain == 0:
+                    return 0.0
+                rs = current_gain / current_loss
+                return 100 - (100 / (1 + rs))
+
+            history.append(round(calc_rsi_value(avg_gain, avg_loss), 2))
+            for i in range(p, len(gains)):
+                avg_gain = ((avg_gain * (p - 1)) + gains[i]) / p
+                avg_loss = ((avg_loss * (p - 1)) + losses[i]) / p
+                history.append(round(calc_rsi_value(avg_gain, avg_loss), 2))
+
         result[f"RSI{p}"] = {
             "history": history,
             "current": history[-1] if history else 0.0

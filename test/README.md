@@ -9,7 +9,9 @@ This directory contains comprehensive test suites for all invest-analyzer script
 | `test_stock_search.py` | `scripts/stock_search.py` | 5 tests | Keyword search, sources, error handling |
 | `test_stock_quote.py` | `scripts/stock_quote.py` | 12 tests | All parameters, error handling, data validation |
 | `test_stock_kline.py` | `scripts/stock_kline.py` | 17 tests | All scales, counts, stock codes |
-| `test_stock_indicators.py` | `scripts/stock_indicators.py` | 16 tests | All indicators, stdin/file input, edge cases |
+| `test_stock_indicators.py` | `scripts/stock_indicators.py` | 19 tests | All indicators, Wilder RSI, stdin/file input, edge cases |
+| `test_stock_technical_analysis.py` | `scripts/stock_technical_analysis.py` | 3 tests | Deterministic technical ratings and signal separation |
+| `test_stock_technical_snapshot.py` | `scripts/stock_technical_snapshot.py` | 3 tests | Aggregated snapshot pipeline and upstream error handling |
 | `test_keyword_expander.py` | `scripts/keyword_expander.py` | 18 tests | All parameters, deduplication, normalization |
 | `test_news_fetcher.py` | `scripts/news_fetcher.py` | 18 tests | Google News keyword search, filtering, time sorting |
 | `third_party_api_checks.py` | API connectivity | 3 checks | External API availability |
@@ -26,6 +28,8 @@ python3 test/run_all_tests.py
 python3 test/test_stock_quote.py
 python3 test/test_stock_kline.py
 python3 test/test_stock_indicators.py
+python3 test/test_stock_technical_analysis.py
+python3 test/test_stock_technical_snapshot.py
 python3 test/test_stock_search.py
 python3 test/test_keyword_expander.py
 python3 test/test_news_fetcher.py
@@ -45,6 +49,12 @@ python3 test/test_stock_kline.py
 
 # Test indicators script
 python3 test/test_stock_indicators.py
+
+# Test technical analysis script
+python3 test/test_stock_technical_analysis.py
+
+# Test one-click technical snapshot script
+python3 test/test_stock_technical_snapshot.py
 
 # Test keyword expander script
 python3 test/test_keyword_expander.py
@@ -86,16 +96,26 @@ python3 -m unittest test.test_stock_quote.TestStockQuote.test_sh_stock_code_6dig
 - ✓ OHLCV field types
 - ✓ Error handling (invalid codes, scales, counts)
 
-### stock_indicators.py (16 tests)
+### stock_indicators.py (19 tests)
 - ✓ stdin and file input methods
 - ✓ MA calculation (5/10/20/60/120 periods)
 - ✓ MACD calculation (DIF, DEA, MACD relationship)
 - ✓ KDJ calculation (K, D, J relationship)
-- ✓ RSI calculation (6/12/24 periods, 0-100 range)
+- ✓ RSI calculation (6/12/24 periods, 0-100 range, Wilder smoothing)
 - ✓ BOLL calculation (upper > middle > lower)
 - ✓ Insufficient data handling
 - ✓ Invalid input handling
 - ✓ Real data integration with stock_kline.py
+
+### stock_technical_analysis.py (3 tests)
+- ✓ Deterministic buy rating from aligned bullish signals
+- ✓ Deterministic sell rating from aligned bearish signals
+- ✓ Mixed timeframes remain hold and ignore news fields
+
+### stock_technical_snapshot.py (3 tests)
+- ✓ Runs quote -> kline -> indicators -> technical analysis in order
+- ✓ Returns aggregated snapshot JSON
+- ✓ Surfaces upstream failures with script name and exit code
 
 ### keyword_expander.py (18 tests)
 - ✓ Code-only mode (base keywords)

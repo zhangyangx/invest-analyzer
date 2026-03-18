@@ -6,10 +6,15 @@ Tests all input methods and indicator calculations.
 """
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
+
+from scripts.stock_indicators import calc_rsi
 
 
 class TestStockIndicators(unittest.TestCase):
@@ -136,6 +141,19 @@ class TestStockIndicators(unittest.TestCase):
         expected_j = round(3 * k - 2 * d, 2)
         self.assertAlmostEqual(kdj["J"]["current"], expected_j, places=1)
 
+    def test_kdj_history_covers_all_valid_windows(self):
+        """Test KDJ history includes one value per valid 9-period window."""
+        kline = self.create_kline_data(50)
+        code, stdout, stderr = self.run_script(stdin_data=json.dumps(kline))
+        self.assertEqual(code, 0, f"Script failed: {stderr}")
+        data = json.loads(stdout)
+        kdj = data["KDJ"]
+
+        expected_length = 50 - 9 + 1
+        self.assertEqual(len(kdj["K"]["history"]), expected_length)
+        self.assertEqual(len(kdj["D"]["history"]), expected_length)
+        self.assertEqual(len(kdj["J"]["history"]), expected_length)
+
     def test_rsi_calculation(self):
         """Test RSI calculation."""
         kline = self.create_kline_data(150)
@@ -153,6 +171,22 @@ class TestStockIndicators(unittest.TestCase):
             if rsi[period]["history"]:
                 self.assertGreaterEqual(rsi[period]["current"], 0)
                 self.assertLessEqual(rsi[period]["current"], 100)
+
+    def test_rsi_uses_wilder_smoothing(self):
+        """Test RSI matches the classic Wilder smoothing example."""
+        closes = [
+            44.34, 44.09, 44.15, 43.61, 44.33, 44.83, 45.10,
+            45.42, 45.84, 46.08, 45.89, 46.03, 45.61, 46.28,
+            46.28, 46.00, 46.03, 46.41, 46.22, 45.64, 46.21,
+        ]
+        expected = [70.46, 66.25, 66.48, 69.35, 66.29, 57.92, 62.88]
+
+        result = calc_rsi(closes, periods=(14,))
+        actual = result["RSI14"]["history"]
+
+        self.assertEqual(len(actual), len(expected))
+        for actual_value, expected_value in zip(actual, expected):
+            self.assertAlmostEqual(actual_value, expected_value, places=2)
 
     def test_boll_calculation(self):
         """Test BOLL (Bollinger Bands) calculation."""
@@ -197,7 +231,7 @@ class TestStockIndicators(unittest.TestCase):
 
     def test_insufficient_data_for_kdj(self):
         """Test with insufficient data for KDJ."""
-        kline = self.create_kline_data(10)
+        kline = self.create_kline_data(8)
         code, stdout, stderr = self.run_script(stdin_data=json.dumps(kline))
         self.assertEqual(code, 0, f"Script failed: {stderr}")
         data = json.loads(stdout)

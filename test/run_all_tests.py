@@ -28,6 +28,8 @@ def main():
         "test_stock_quote.py",
         "test_stock_kline.py",
         "test_stock_indicators.py",
+        "test_stock_technical_analysis.py",
+        "test_stock_technical_snapshot.py",
         "test_keyword_expander.py",
         "test_news_fetcher.py",
     ]

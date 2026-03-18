@@ -210,9 +210,9 @@ class TestKeywordExpander(unittest.TestCase):
         self.assertIn("贵州茅台", data["keywords"])
 
     def test_missing_name(self):
-        """Test without --name (should return error)."""
+        """Test without --name (should return error with exit code 2)."""
         code, stdout, stderr = self.run_script("--topic", "财报")
-        self.assertEqual(code, 0)
+        self.assertEqual(code, 2)
         data = json.loads(stdout)
         self.assertEqual(data.get("error"), "invalid_stock_name")
 

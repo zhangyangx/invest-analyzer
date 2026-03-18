@@ -15,6 +15,7 @@ Output: JSON {"keywords": [..]}
 import argparse
 import json
 import re
+import sys
 
 
 def main():
@@ -28,7 +29,7 @@ def main():
     name = (args.name or "").strip()
     if not name:
         print(json.dumps({"error": "invalid_stock_name"}, ensure_ascii=False))
-        return
+        sys.exit(2)
 
     keywords = []
 

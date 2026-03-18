@@ -19,6 +19,7 @@ python3 test/run_all_tests.py
 python3 test/test_stock_quote.py
 python3 test/test_stock_kline.py
 python3 test/test_stock_indicators.py
+python3 test/test_stock_technical_analysis.py
 python3 test/test_stock_search.py
 python3 test/test_keyword_expander.py
 python3 test/test_news_fetcher.py
@@ -50,6 +51,12 @@ python3 stock_kline.py 600519 240 120  # Daily K-line for trend
 python3 stock_kline.py 600519 5 200 | python3 stock_indicators.py
 python3 stock_kline.py 600519 240 120 | python3 stock_indicators.py
 
+# Run deterministic technical rating
+python3 stock_technical_analysis.py --file technical_payload.json
+
+# Run one-click technical snapshot
+python3 stock_technical_snapshot.py 600519
+
 # Expand keywords for news search
 python3 keyword_expander.py --name "贵州茅台" --topic "财报"
 
@@ -65,6 +72,8 @@ python3 news_fetcher.py --keywords "AAPL,Apple,iPhone" --hours 24
 User Input → stock_search.py (if name, not code)
           → stock_quote.py (real-time data)
           → stock_kline.py (scale=5 and scale=240) → stock_indicators.py (both timeframes)
+          → stock_technical_analysis.py (pure technical rating)
+          → stock_technical_snapshot.py (aggregated JSON entrypoint, optional)
           → keyword_expander.py → news_fetcher.py (if news requested)
           → AI generates Markdown report with both intraday and daily analysis
 ```
@@ -77,6 +86,8 @@ User Input → stock_search.py (if name, not code)
 | `stock_quote.py` | Real-time price/volume via Tencent API |
 | `stock_kline.py` | K-line OHLCV data via Sina API (multiple timeframes) |
 | `stock_indicators.py` | Calculate MA/MACD/KDJ/RSI/BOLL from stdin JSON |
+| `stock_technical_analysis.py` | Generate deterministic pure-technical ratings from quote + indicators |
+| `stock_technical_snapshot.py` | One-click aggregate quote, both timeframes, indicators, and technical rating |
 | `keyword_expander.py` | Generate search keywords from stock name/topic |
 | `news_fetcher.py` | Fetch news from Google News RSS |
 
@@ -132,7 +143,7 @@ The `stock_indicators.py` outputs both `history` (array) and `current` (latest v
 - **MA**: 5, 10, 20, 60, 120 periods
 - **MACD**: DIF, DEA, MACD histogram
 - **KDJ**: K, D, J values
-- **RSI**: 6, 12, 24 periods
+- **RSI**: 6, 12, 24 periods with Wilder smoothing
 - **BOLL**: Upper, Middle, Lower bands
 - **Volume**: Historical volume data
 
@@ -155,9 +166,6 @@ Python standard library only - no external packages required:
 
 ## Rating System
 
-Analysis reports use 5-level ratings with specific criteria defined in SKILL.md:
-- **Buy**: MA bullish + (MACD golden cross OR RSI oversold bounce OR BOLL breakout with volume) AND no major negatives
-- **Add**: 2+ bullish indicators AND no clear negatives
-- **Hold**: Mixed indicators, unclear direction
-- **Reduce**: 2+ bearish indicators OR broke key support
-- **Sell**: MA bearish + (MACD death cross OR RSI overbought decline OR broke BOLL lower band) OR major negative news
+- `stock_technical_analysis.py` outputs the repository's deterministic `technical_rating`
+- `technical_rating` is pure-technical only and does not consume news sentiment
+- News belongs in the separate "资讯与影响 / 综合判断" layer
