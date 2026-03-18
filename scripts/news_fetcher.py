@@ -16,7 +16,8 @@ import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
 from email.utils import parsedate_to_datetime
 
-USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _utils import USER_AGENT
 
 DEFAULT_CONFIG = {
     "max_items": 30,
@@ -175,6 +176,13 @@ def fetch_keyword_news(keyword: str, limit: int, tz_local: timezone):
     return parse_rss(data.decode("utf-8", errors="ignore"), "Google News", limit, tz_local)
 
 
+def fetch_keyword_news_safe(keyword: str, limit: int, tz_local: timezone):
+    try:
+        return fetch_keyword_news(keyword, limit, tz_local)
+    except Exception:
+        return []
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--keyword", type=str, default="")
@@ -211,7 +219,7 @@ def main():
 
         items = []
         for t in terms:
-            items.extend(fetch_keyword_news(t, base_limit, tz_local))
+            items.extend(fetch_keyword_news_safe(t, base_limit, tz_local))
         # dedupe by title+link
         seen = set()
         deduped = []
