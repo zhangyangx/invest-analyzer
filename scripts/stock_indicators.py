@@ -239,6 +239,55 @@ def calc_boll(closes, n=20, k=2):
     }
 
 
+def calc_vol_ma(volumes, periods=(5, 10, 20)):
+    """计算成交量均线"""
+    result = {}
+    for p in periods:
+        history = []
+        for i in range(p, len(volumes) + 1):
+            ma_val = sum(volumes[i - p:i]) / p
+            history.append(round(ma_val, 2))
+        result[f"VOL_MA{p}"] = {
+            "history": history,
+            "current": history[-1] if history else 0.0
+        }
+    return result
+
+
+def calc_obv(closes, volumes):
+    """计算OBV能量潮"""
+    if len(closes) < 2:
+        return {"history": [], "current": 0.0}
+    obv = [0.0]
+    for i in range(1, len(closes)):
+        if closes[i] > closes[i - 1]:
+            obv.append(obv[-1] + volumes[i])
+        elif closes[i] < closes[i - 1]:
+            obv.append(obv[-1] - volumes[i])
+        else:
+            obv.append(obv[-1])
+    return {
+        "history": [round(v, 2) for v in obv],
+        "current": round(obv[-1], 2)
+    }
+
+
+def calc_pct_change(closes):
+    """计算每根K线涨跌幅(%)"""
+    if len(closes) < 2:
+        return {"history": [], "current": 0.0}
+    changes = [0.0]
+    for i in range(1, len(closes)):
+        if closes[i - 1] > 0:
+            changes.append(round((closes[i] - closes[i - 1]) / closes[i - 1] * 100, 4))
+        else:
+            changes.append(0.0)
+    return {
+        "history": changes,
+        "current": changes[-1]
+    }
+
+
 def main():
     try:
         payload = load_input()
@@ -262,11 +311,13 @@ def main():
         "KDJ": calc_kdj(highs, lows, closes),
         "RSI": calc_rsi(closes),
         "BOLL": calc_boll(closes),
-        # 添加成交量历史数据用于量价分析
         "volume": {
             "history": volumes,
             "current": volumes[-1] if volumes else 0
-        }
+        },
+        "VOL_MA": calc_vol_ma(volumes),
+        "OBV": calc_obv(closes, volumes),
+        "PCT_CHANGE": calc_pct_change(closes),
     }
 
     print(json.dumps(indicators, ensure_ascii=False))

@@ -78,14 +78,37 @@ def get_latest_close(section, quote):
 
 
 def get_volume_ratio(indicators):
+    # 优先使用 VOL_MA5（不含当根 bar 的均值）
+    vol_ma5 = get_current(indicators, "VOL_MA", "VOL_MA5")
+    vol_ma5_hist = get_history(indicators, "VOL_MA", "VOL_MA5")
     volumes = [to_float(item) for item in ((indicators.get("volume") or {}).get("history") or [])]
-    if len(volumes) < 5:
+    if not volumes:
         return 1.0
     current = volumes[-1]
-    avg5 = sum(volumes[-5:]) / 5
-    if avg5 <= 0:
-        return 1.0
-    return round(current / avg5, 4)
+    # 用前 4 根 bar 均值（标准量比定义，不含当根）
+    if len(vol_ma5_hist) >= 2 and vol_ma5_hist[-2] > 0:
+        return round(current / vol_ma5_hist[-2], 4)
+    if len(volumes) >= 5:
+        avg4 = sum(volumes[-5:-1]) / 4
+        if avg4 > 0:
+            return round(current / avg4, 4)
+    return 1.0
+
+
+def check_obv_divergence(closes_history, obv_history, lookback=20):
+    """检测价格与OBV的背离，返回 'bullish'/'bearish'/None"""
+    if len(closes_history) < lookback or len(obv_history) < lookback:
+        return None
+    p = closes_history[-lookback:]
+    o = obv_history[-lookback:]
+    half = lookback // 2
+    # 顶背离：近期价格创新高但OBV未创新高
+    if max(p[half:]) > max(p[:half]) and max(o[half:]) <= max(o[:half]):
+        return "bearish"
+    # 底背离：近期价格创新低但OBV未创新低
+    if min(p[half:]) < min(p[:half]) and min(o[half:]) >= min(o[:half]):
+        return "bullish"
+    return None
 
 
 def analyze_timeframe(name, section, quote):
@@ -241,6 +264,89 @@ def analyze_timeframe(name, section, quote):
         if amplitude > 5:
             risks.append("high_intraday_amplitude")
 
+    # === 量价形态信号 ===
+    obv_data = (indicators.get("OBV") or {})
+    obv_hist = [to_float(item) for item in obv_data.get("history") or []]
+
+    pct_data = (indicators.get("PCT_CHANGE") or {})
+    pct_change_hist = [to_float(item) for item in pct_data.get("history") or []]
+    current_pct_change = to_float(pct_data.get("current"))
+
+    vol_ma5_hist = get_history(indicators, "VOL_MA", "VOL_MA5")
+    klines_list = (section or {}).get("klines") or []
+    closes_hist = [to_float(k.get("close")) for k in klines_list]
+
+    # 放量滞涨
+    if volume_ratio > 1.2 and abs(current_pct_change) < 0.5:
+        avg_pct_3 = (sum(abs(v) for v in pct_change_hist[-3:]) / 3) if len(pct_change_hist) >= 3 else abs(current_pct_change)
+        if volume_ratio > 1.5 and abs(current_pct_change) < 0.5 and avg_pct_3 < 0.3:
+            bearish.append("volume_stagnation")
+            score -= 2
+        elif abs(current_pct_change) < 0.3:
+            bearish.append("mild_volume_stagnation")
+            score -= 1
+
+    # OBV 背离
+    obv_div = check_obv_divergence(closes_hist, obv_hist)
+    if obv_div == "bearish":
+        bearish.append("obv_bearish_divergence")
+        score -= 2
+        risks.append("obv_bearish_divergence")
+    elif obv_div == "bullish":
+        bullish.append("obv_bullish_divergence")
+        score += 2
+
+    # 缩量上涨乏力
+    if prev_close > 0 and current > prev_close and volume_ratio < 0.7 and falling(vol_ma5_hist):
+        bearish.append("shrinking_volume_rise")
+        score -= 1
+
+    # 放量突破
+    ma20_hist = get_history(indicators, "MA", "MA20")
+    if volume_ratio > 2.0 and len(closes_hist) >= 2 and len(ma20_hist) >= 2:
+        if crossed_above(closes_hist, ma20_hist):
+            bullish.append("volume_breakout")
+            score += 2
+
+    # 回踩均线支撑（短周期优先，只报一个）
+    for period, ma_name in [(5, "MA5"), (10, "MA10"), (20, "MA20"), (60, "MA60")]:
+        ma_val = get_current(indicators, "MA", ma_name)
+        ma_h = get_history(indicators, "MA", ma_name)
+        if not ma_val or not price or price <= ma_val:
+            continue
+        proximity = (price - ma_val) / ma_val * 100
+        if 0 < proximity <= 1.5 and rising(ma_h):
+            bullish.append(f"pullback_ma{period}_support")
+            score += 2 if volume_ratio < 1.0 else 1
+            break
+
+    # 回踩 BOLL 中轨支撑
+    boll_mid_hist = get_history(indicators, "BOLL", "middle")
+    if price and middle and price > middle:
+        boll_prox = (price - middle) / middle * 100
+        if 0 < boll_prox <= 1.0 and rising(boll_mid_hist):
+            if "pullback_ma5_support" not in bullish and "pullback_ma10_support" not in bullish \
+                    and "pullback_ma20_support" not in bullish and "pullback_ma60_support" not in bullish:
+                bullish.append("pullback_boll_mid_support")
+                score += 1
+
+    # 均线支撑破位
+    for period, ma_name in [(20, "MA20"), (60, "MA60")]:
+        ma_val = get_current(indicators, "MA", ma_name)
+        ma_h = get_history(indicators, "MA", ma_name)
+        if not ma_val or not price or price >= ma_val:
+            continue
+        # 检查此前价格是否一直在均线上方
+        if len(ma_h) >= 5 and len(closes_hist) >= 5:
+            n_recent = min(len(closes_hist), len(ma_h))
+            recent_c = closes_hist[-n_recent:]
+            recent_m = ma_h[-n_recent:]
+            above_count = sum(1 for c, m in zip(recent_c[-5:], recent_m[-5:]) if c > m)
+            if above_count >= 4:
+                bearish.append(f"ma{period}_breakdown")
+                score -= 2 if volume_ratio > 1.2 else 1
+                break
+
     if score >= 3:
         bias = "bullish"
     elif score <= -3:
@@ -275,13 +381,15 @@ def summarize_rating(daily, intraday, rating):
 
 
 def determine_rating(daily, intraday):
+    strong_bullish = ("macd_golden_cross", "rsi_oversold_rebound", "boll_breakout_up",
+                      "obv_bullish_divergence", "volume_breakout")
+    strong_bearish = ("macd_death_cross", "rsi_overbought_falling", "boll_breakdown",
+                      "obv_bearish_divergence", "volume_stagnation")
     daily_bull = "ma_bullish_stack" in daily["bullish_signals"] and any(
-        signal in daily["bullish_signals"]
-        for signal in ("macd_golden_cross", "rsi_oversold_rebound", "boll_breakout_up")
+        signal in daily["bullish_signals"] for signal in strong_bullish
     )
     daily_bear = "ma_bearish_stack" in daily["bearish_signals"] and any(
-        signal in daily["bearish_signals"]
-        for signal in ("macd_death_cross", "rsi_overbought_falling", "boll_breakdown")
+        signal in daily["bearish_signals"] for signal in strong_bearish
     )
 
     intraday_bias = intraday["bias"]

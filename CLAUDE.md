@@ -146,6 +146,9 @@ The `stock_indicators.py` outputs both `history` (array) and `current` (latest v
 - **RSI**: 6, 12, 24 periods with Wilder smoothing
 - **BOLL**: Upper, Middle, Lower bands
 - **Volume**: Historical volume data
+- **VOL_MA**: 5, 10, 20 period volume moving averages
+- **OBV**: On Balance Volume (energy tide, for divergence detection)
+- **PCT_CHANGE**: Per-bar price change percentage
 
 ## Dependencies
 
